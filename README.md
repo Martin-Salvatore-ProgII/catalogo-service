@@ -6,7 +6,7 @@ Es uno de los tres repositorios de la entrega, junto con `turnos-service` y `app
 
 ## Estado
 
-Esqueleto del servicio con la seguridad activa: todo pedido exige un JWT de usuario válido emitido por `turnos-service`, salvo `/actuator/health`. Todavía no tiene endpoints de negocio ni sincronización.
+Listado de categorías de profesionales (`GET /api/professional-categories`), con la seguridad activa: todo pedido exige un JWT de usuario válido emitido por `turnos-service`, salvo `/actuator/health`. Todavía no tiene sincronización con la cátedra, así que las tablas están vacías; faltan también la búsqueda de profesionales y la agenda.
 
 ## Requisitos
 
