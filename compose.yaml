@@ -24,6 +24,10 @@ services:
       DB_URL: jdbc:postgresql://catalogo-db:5432/${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
+      JWT_PUBLIC_KEY_LOCATION: file:/run/secrets/jwt-public.pem
+    volumes:
+      # Archivos secretos, fuera de Git. Se montan en solo lectura.
+      - ./secrets:/run/secrets:ro
     ports:
       - "${CATALOGO_PORT}:8080"
     depends_on:

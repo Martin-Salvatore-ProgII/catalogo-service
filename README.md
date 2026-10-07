@@ -6,7 +6,7 @@ Es uno de los tres repositorios de la entrega, junto con `turnos-service` y `app
 
 ## Estado
 
-Esqueleto del servicio: arranca, se conecta a su base PostgreSQL, ejecuta las migraciones de Flyway y responde los errores en `application/problem+json`. Todavía no tiene endpoints de negocio ni sincronización.
+Listado de categorías de profesionales (`GET /api/professional-categories`), con la seguridad activa: todo pedido exige un JWT de usuario válido emitido por `turnos-service`, salvo `/actuator/health`. Todavía no tiene sincronización con la cátedra, así que las tablas están vacías; faltan también la búsqueda de profesionales y la agenda.
 
 ## Requisitos
 
@@ -30,6 +30,19 @@ cp .env.example .env
 | `CATALOGO_DB_PORT` | Puerto de PostgreSQL en la máquina | `5433` |
 
 El servicio recibe la conexión en `DB_URL`, `DB_USER` y `DB_PASSWORD`. Con Docker Compose, `DB_URL` se arma sola a partir de `DB_NAME`. No hay valores por defecto: si falta alguna, el servicio no arranca.
+
+### Clave pública del JWT de usuario
+
+Este servicio no emite tokens: valida los que emite `turnos-service`, con la clave pública de su par RSA. La lee de `secrets/jwt-public.pem`. La carpeta `secrets/` no se commitea.
+
+La clave pública se exporta de la clave privada de turnos, que tiene que existir antes (su README explica cómo generarla):
+
+```
+mkdir -p secrets
+openssl pkey -in ../turnos-service/secrets/jwt-private.pem -pubout -out secrets/jwt-public.pem
+```
+
+Docker Compose monta esa carpeta en el contenedor en solo lectura. Sin ese archivo, el servicio no arranca. Si se cambia la clave de turnos, hay que volver a exportar la pública.
 
 ## Arranque
 
