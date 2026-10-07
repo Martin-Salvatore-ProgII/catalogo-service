@@ -38,6 +38,7 @@ Las pruebas siguen la estructura de paquetes del código: cada clase se prueba e
 
 | Qué se quiere comprobar | Dónde | Necesita Docker |
 | --- | --- | --- |
+| Seguridad del endpoint de categorías: sin token, token vencido, firma inválida, y el caso válido de punta a punta | `category/CategoryAccessTest` | Sí |
 | Reglas de acceso: rutas públicas, sin token, con token, CORS | `shared/infrastructure/config/SecurityConfigTest` | Sí |
 | Validación del JWT: firma, vencimiento, login y roles | `shared/infrastructure/config/JwtConfigTest` | No |
 | Listado de categorías: regla de negocio | `category/application/usecases/*Test` | No |
