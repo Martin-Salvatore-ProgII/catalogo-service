@@ -5,7 +5,7 @@ import org.springframework.boot.SpringApplication;
 public class TestCatalogoApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.from(CatalogoApplication::main).with(TestcontainersConfiguration.class).run(args);
+		SpringApplication.from(CatalogoApplication::main).with(TestcontainersConfiguration.class, TestJwtKeysConfiguration.class).run(args);
 	}
 
 }

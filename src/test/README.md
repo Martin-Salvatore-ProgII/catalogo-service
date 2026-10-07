@@ -29,6 +29,7 @@ Para correr una sola clase:
 | `CatalogoApplicationTests` | Verifica que la aplicación arranca completa contra PostgreSQL, con Flyway | Sí |
 | `ArchitectureTest` | Verifica la regla de dependencias de la arquitectura hexagonal (ADR-0053) | No |
 | `TestcontainersConfiguration` | Declara el contenedor de PostgreSQL que usan las pruebas. Se importa con `@Import` en cada prueba que necesite base | — |
+| `TestJwtKeysConfiguration` | Hace el papel de turnos: genera en memoria un par de claves RSA, le da la pública al servicio y permite firmar tokens de prueba. No hay ninguna clave en el repositorio | — |
 | `TestCatalogoApplication` | No es una prueba: levanta la aplicación con una base descartable para probarla a mano | Sí |
 
 ## Levantar la aplicación con una base descartable
