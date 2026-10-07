@@ -5,3 +5,10 @@ spring:
     url: ${DB_URL}
     username: ${DB_USER}
     password: ${DB_PASSWORD}
+
+catalogo:
+  security:
+    jwt:
+      # Ubicación de la clave pública RSA con la que se valida el JWT de usuario que emite el
+      # servicio de turnos (ADR-0032).
+      public-key-location: ${JWT_PUBLIC_KEY_LOCATION}
