@@ -6,7 +6,7 @@ Es uno de los tres repositorios de la entrega, junto con `turnos-service` y `app
 
 ## Estado
 
-Esqueleto del servicio con la validación del JWT de usuario: todo pedido exige un token válido emitido por `turnos-service`. Todavía no tiene endpoints de negocio ni sincronización.
+Esqueleto del servicio con la seguridad activa: todo pedido exige un JWT de usuario válido emitido por `turnos-service`, salvo `/actuator/health`. Todavía no tiene endpoints de negocio ni sincronización.
 
 ## Requisitos
 
