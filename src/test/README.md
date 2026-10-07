@@ -32,6 +32,19 @@ Para correr una sola clase:
 | `TestJwtKeysConfiguration` | Hace el papel de turnos: genera en memoria un par de claves RSA, le da la pública al servicio y permite firmar tokens de prueba. No hay ninguna clave en el repositorio | — |
 | `TestCatalogoApplication` | No es una prueba: levanta la aplicación con una base descartable para probarla a mano | Sí |
 
+## Pruebas por tema
+
+Las pruebas siguen la estructura de paquetes del código: cada clase se prueba en su capa.
+
+| Qué se quiere comprobar | Dónde | Necesita Docker |
+| --- | --- | --- |
+| Reglas de acceso: rutas públicas, sin token, con token, CORS | `shared/infrastructure/config/SecurityConfigTest` | Sí |
+| Validación del JWT: firma, vencimiento, login y roles | `shared/infrastructure/config/JwtConfigTest` | No |
+| Listado de categorías: regla de negocio | `category/application/usecases/*Test` | No |
+| Listado de categorías: forma de la respuesta HTTP | `category/infrastructure/web/controller/CategoryControllerTest` | No |
+| Lectura de categorías en PostgreSQL: solo habilitadas, por nombre | `category/infrastructure/persistence/adapter/JpaCategoryRepositoryAdapterTest` | Sí |
+| Esquema y restricciones de la base | `DatabaseMigrationTest` | Sí |
+
 ## Levantar la aplicación con una base descartable
 
 ```
