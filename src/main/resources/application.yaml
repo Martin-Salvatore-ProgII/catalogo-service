@@ -12,3 +12,6 @@ catalogo:
       # Ubicación de la clave pública RSA con la que se valida el JWT de usuario que emite el
       # servicio de turnos (ADR-0032).
       public-key-location: ${JWT_PUBLIC_KEY_LOCATION}
+    cors:
+      # Orígenes web que pueden llamar a la API desde un navegador. Vacío: ninguno (ADR-0036).
+      allowed-origins: []
