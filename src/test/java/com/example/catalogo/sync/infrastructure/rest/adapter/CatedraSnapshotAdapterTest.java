@@ -25,7 +25,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.web.client.RestClient;
 import org.testcontainers.containers.GenericContainer;
 import tools.jackson.databind.json.JsonMapper;
-import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.ObjectNode;
 
 // Sin Spring, contra una cátedra falsa (WireMock) que responde el snapshot real que publicó la
@@ -33,7 +32,6 @@ import tools.jackson.databind.node.ObjectNode;
 // El reintento y los mensajes de falla se prueban en CatedraReadExecutorTest (ADR-0063).
 class CatedraSnapshotAdapterTest {
 
-	private static final String SNAPSHOT = "catedra/snapshot.json";
 	private static final JsonMapper JSON = JsonMapper.builder().build();
 
 	private static final GenericContainer<?> catedra = FakeCatedra.newContainer();
@@ -185,16 +183,11 @@ class CatedraSnapshotAdapterTest {
 	}
 
 	private static ObjectNode realSnapshot() {
-		return (ObjectNode) JSON.readTree(FakeCatedra.readResource(SNAPSHOT));
+		return (ObjectNode) JSON.readTree(FakeCatedra.readResource(FakeCatedra.SNAPSHOT));
 	}
 
 	private static void serve(ObjectNode snapshot) {
-		ObjectNode mapping = JSON.createObjectNode();
-		mapping.putObject("request").put("method", "GET").put("url", CatedraSnapshotAdapter.SNAPSHOT_PATH);
-		ObjectNode response = mapping.putObject("response").put("status", 200);
-		response.putObject("headers").put("Content-Type", "application/json");
-		response.set("jsonBody", snapshot);
-		FakeCatedra.stub(catedra, mapping.toString());
+		FakeCatedra.stub(catedra, FakeCatedra.snapshotMapping(snapshot.toString()));
 	}
 
 }

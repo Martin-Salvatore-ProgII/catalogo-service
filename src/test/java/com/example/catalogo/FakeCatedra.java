@@ -11,8 +11,10 @@ import java.nio.charset.StandardCharsets;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.DockerImageName;
+import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.utility.MountableFile;
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 /**
  * La API de la cátedra simulada con WireMock, en un contenedor (ADR-0044, {@code docs/arq/pruebas.md}).
@@ -25,6 +27,11 @@ public final class FakeCatedra {
 
 	/** Respuesta de {@code GET /api/student/integration} en estado PROVISIONED, con el formato de la REF §5.3. */
 	public static final String INTEGRATION_MAPPING = "catedra/integration.json";
+
+	/** Copia de un snapshot real de la cátedra (REF §7): versión 1, 8 categorías, 24 profesionales, 44 horarios. */
+	public static final String SNAPSHOT = "catedra/snapshot.json";
+
+	public static final String SNAPSHOT_PATH = "/api/synchronization/snapshot";
 
 	private static final DockerImageName IMAGE = DockerImageName.parse("wiremock/wiremock:3.13.2");
 	private static final int PORT = 8080;
@@ -42,10 +49,24 @@ public final class FakeCatedra {
 				.waitingFor(Wait.forHttp("/__admin/health").forStatusCode(200));
 	}
 
-	/** Contenedor que ya arranca respondiendo la integración, como la cátedra de la demo. */
-	public static GenericContainer<?> newContainerWithIntegration() {
-		return newContainer().withCopyFileToContainer(
-				MountableFile.forClasspathResource(INTEGRATION_MAPPING), MAPPINGS_DIR + "integration.json");
+	/**
+	 * Contenedor que ya arranca respondiendo como la cátedra real: la integración en estado
+	 * PROVISIONED y el snapshot real.
+	 */
+	public static GenericContainer<?> newContainerLikeTheCatedra() {
+		return newContainer()
+				.withCopyFileToContainer(MountableFile.forClasspathResource(INTEGRATION_MAPPING), MAPPINGS_DIR + "integration.json")
+				.withCopyToContainer(Transferable.of(snapshotMapping(readResource(SNAPSHOT))), MAPPINGS_DIR + "snapshot.json");
+	}
+
+	/** Respuesta 200 de {@code GET /api/synchronization/snapshot} con el cuerpo dado. */
+	public static String snapshotMapping(String snapshotJson) {
+		ObjectNode mapping = JSON.createObjectNode();
+		mapping.putObject("request").put("method", "GET").put("url", SNAPSHOT_PATH);
+		ObjectNode response = mapping.putObject("response").put("status", 200);
+		response.putObject("headers").put("Content-Type", "application/json");
+		response.set("jsonBody", JSON.readTree(snapshotJson));
+		return mapping.toString();
 	}
 
 	public static String baseUrl(GenericContainer<?> container) {

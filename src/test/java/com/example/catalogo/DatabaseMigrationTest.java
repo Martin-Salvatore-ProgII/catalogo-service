@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.util.List;
 import java.util.Map;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -25,6 +26,14 @@ class DatabaseMigrationTest {
 
 	@Autowired
 	private JdbcClient jdbcClient;
+
+	// Al arrancar, el servicio cargó el snapshot de la cátedra falsa. Cada prueba parte de las
+	// tablas como las deja la migración; la transacción lo deshace al terminar.
+	@BeforeEach
+	void startFromTheMigratedSchema() {
+		CatalogTables.clear(jdbcClient);
+		CatalogTables.resetSyncState(jdbcClient);
+	}
 
 	@Test
 	void createsTheCatalogTables() {
