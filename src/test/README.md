@@ -47,7 +47,8 @@ Las pruebas siguen la estructura de paquetes del código: cada clase se prueba e
 | Listado de categorías: regla de negocio | `category/application/usecases/*Test` | No |
 | Listado de categorías: forma de la respuesta HTTP | `category/infrastructure/web/controller/CategoryControllerTest` | No |
 | Lectura de categorías en PostgreSQL: solo habilitadas, por nombre | `category/infrastructure/persistence/adapter/JpaCategoryRepositoryAdapterTest` | Sí |
-| Esquema y restricciones de la base | `DatabaseMigrationTest` | Sí |
+| Estado de sincronización en PostgreSQL: fila inicial, avance solo desde la versión esperada (ADR-0007), fallas que no tocan la versión, marca de sincronización en curso | `sync/infrastructure/persistence/adapter/JpaSyncStateRepositoryAdapterTest` | Sí |
+| Esquema y restricciones de la base, incluida la fila única de `sync_state` | `DatabaseMigrationTest` | Sí |
 
 ## Levantar la aplicación con una base descartable
 

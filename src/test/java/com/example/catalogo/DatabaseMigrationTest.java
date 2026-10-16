@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,7 +33,7 @@ class DatabaseMigrationTest {
 				.query(String.class)
 				.list();
 
-		assertThat(tables).contains("professional_category", "professional", "weekly_schedule");
+		assertThat(tables).contains("professional_category", "professional", "weekly_schedule", "sync_state");
 	}
 
 	@Test
@@ -93,6 +94,30 @@ class DatabaseMigrationTest {
 		assertThatThrownBy(() -> insertSchedule(301, 201, "LUNES"))
 				.isInstanceOf(DataIntegrityViolationException.class)
 				.hasMessageContaining("ck_weekly_schedule_day_of_week");
+	}
+
+	@Test
+	void createsTheSyncStateWithASingleRowWithoutLocalVersion() {
+		Map<String, Object> row = jdbcClient.sql("SELECT * FROM sync_state").query().singleRow();
+
+		assertThat(row).containsEntry("id", 1).containsEntry("sync_in_progress", false);
+		assertThat(row.get("local_version")).isNull();
+		assertThat(row.get("last_success_at")).isNull();
+		assertThat(row.get("last_error")).isNull();
+	}
+
+	@Test
+	void rejectsASecondSyncStateRow() {
+		assertThatThrownBy(() -> jdbcClient.sql("INSERT INTO sync_state (id, sync_in_progress) VALUES (2, false)").update())
+				.isInstanceOf(DataIntegrityViolationException.class)
+				.hasMessageContaining("ck_sync_state_single_row");
+	}
+
+	@Test
+	void rejectsASyncTypeOutsideTheContract() {
+		assertThatThrownBy(() -> jdbcClient.sql("UPDATE sync_state SET last_success_type = 'FULL'").update())
+				.isInstanceOf(DataIntegrityViolationException.class)
+				.hasMessageContaining("ck_sync_state_last_success_type");
 	}
 
 	private void insertCategory(long id, String name, String description) {
