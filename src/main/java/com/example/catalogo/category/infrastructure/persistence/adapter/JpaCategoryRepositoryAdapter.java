@@ -23,4 +23,17 @@ public class JpaCategoryRepositoryAdapter implements CategoryRepository {
 				.toList();
 	}
 
+	// Con el id ya asignado, Spring Data busca la fila por id y la actualiza, o la crea si no está.
+	@Override
+	public void saveAll(List<Category> categories) {
+		jpaCategoryRepository.saveAll(categories.stream().map(categoryMapper::toEntity).toList());
+	}
+
+	// Un solo DELETE que se ejecuta en el momento. Un borrado por entity, en cambio, Hibernate lo
+	// deja para después de los INSERT, y volver a guardar los mismos ids chocaría con las filas viejas.
+	@Override
+	public void deleteAll() {
+		jpaCategoryRepository.deleteAllInBatch();
+	}
+
 }

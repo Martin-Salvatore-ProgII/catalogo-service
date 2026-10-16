@@ -11,4 +11,11 @@ public interface CategoryRepository {
 	// en memoria, es para traer únicamente las filas que se van a usar.
 	List<Category> findAllEnabledOrderedByName();
 
+	// Guarda por el id de la cátedra: crea las que no están y reemplaza las que ya están. La usa
+	// la sincronización para escribir la copia local (ADR-0062).
+	void saveAll(List<Category> categories);
+
+	// Borra la copia local entera, para reemplazarla desde un snapshot. Los profesionales se borran antes.
+	void deleteAll();
+
 }
