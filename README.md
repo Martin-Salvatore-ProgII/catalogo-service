@@ -108,3 +108,15 @@ com.example.catalogo
 ├── sync/          feature de sincronización con la cátedra (por ahora, su estado)
 └── shared/        configuración (cliente e integración de la cátedra, seguridad) y manejo de errores comunes
 ```
+
+### Piezas de `shared` y quién las usa
+
+Lo que sirve a más de una feature se lleva a `shared` en cuanto aparece el segundo uso (ADR-0063).
+
+| Pieza | Qué hace | La usan |
+| --- | --- | --- |
+| `config/CatedraRestClientConfig` | Cliente HTTP de la cátedra, con el JWT técnico y los timeouts | Integración al arrancar, `sync` (snapshot) |
+| `rest/CatedraReadExecutor` | Lectura a la cátedra con un reintento (ADR-0029) y mensajes de falla sin su dirección | Integración al arrancar, `sync` (snapshot) |
+| `config/CatedraIntegrationConfig` | Pide la integración al arrancar; sin ella, el servicio no arranca (ADR-0005) | Redis y Kafka, desde la M5 |
+| `config/JwtConfig`, `config/SecurityConfig` | Validación del JWT de usuario y reglas de acceso | Todos los endpoints |
+| `web/advice/GlobalExceptionHandler` | Errores `problem+json` | Todos los endpoints |
