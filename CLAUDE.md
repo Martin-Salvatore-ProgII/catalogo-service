@@ -24,10 +24,11 @@ Las pruebas necesitan Docker en ejecución (PostgreSQL real con Testcontainers).
 
 - **Feature `category`:** `GET /api/professional-categories`, solo lectura. Es la feature de referencia para las siguientes.
 - **`shared/infrastructure/config`:** `JwtConfig` (valida el JWT con la clave pública), `SecurityConfig` (reglas de acceso y CORS), `CatedraRestClientConfig` (cliente HTTP de la cátedra, con JWT técnico y timeouts) y `CatedraIntegrationConfig` (pide la integración al arrancar; sin ella, no arranca).
+- **Feature `sync`:** por ahora solo la persistencia del estado de sincronización (`SyncStateRepository`). La versión avanza con un `UPDATE` condicionado a la versión esperada (ADR-0007).
 - **`shared/infrastructure/web/advice`:** `GlobalExceptionHandler`.
-- **Migración `V1`:** tablas `professional_category`, `professional` y `weekly_schedule`.
+- **Migraciones:** `V1` con las tablas `professional_category`, `professional` y `weekly_schedule`; `V2` con `sync_state`, una sola fila (`id = 1`) que crea la propia migración.
 
-Todavía no hay: sincronización del catálogo (snapshot, Redis, Kafka), las tablas `SYNC_STATE` y `PROCESSED_EVENT`, la respuesta `503 CATALOG_NOT_READY`, la búsqueda de profesionales ni la agenda. Tampoco HTTPS (ADR-0035).
+Todavía no hay: sincronización del catálogo (snapshot, Redis, Kafka), la tabla `PROCESSED_EVENT`, la respuesta `503 CATALOG_NOT_READY`, la búsqueda de profesionales ni la agenda. Tampoco HTTPS (ADR-0035).
 
 ## Lo propio de este servicio
 
