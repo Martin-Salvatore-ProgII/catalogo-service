@@ -6,7 +6,7 @@ Es uno de los tres repositorios de la entrega, junto con `turnos-service` y `app
 
 ## Estado
 
-Listado de categorías de profesionales (`GET /api/professional-categories`), con la seguridad activa: todo pedido exige un JWT de usuario válido emitido por `turnos-service`, salvo `/actuator/health`. Al arrancar obtiene de la cátedra la configuración de la integración. Todavía no sincroniza el catálogo, así que las tablas están vacías; faltan también la búsqueda de profesionales y la agenda.
+Listado de categorías de profesionales (`GET /api/professional-categories`), con la seguridad activa: todo pedido exige un JWT de usuario válido emitido por `turnos-service`, salvo `/actuator/health`. Al arrancar obtiene de la cátedra la configuración de la integración y, si la base está vacía, carga el catálogo completo desde el snapshot de la cátedra. Un chequeo periódico reintenta si esa carga falló. Faltan la sincronización incremental (Redis y Kafka), la búsqueda de profesionales y la agenda.
 
 ## Requisitos
 
@@ -39,6 +39,8 @@ El servicio recibe la conexión en `DB_URL`, `DB_USER` y `DB_PASSWORD`. Con Dock
 En el `.env` van solo la URL base y el JWT técnico. Redis, Kafka y sus topics no se configuran: al arrancar, el servicio los pide con `GET /api/student/integration` y los guarda solo en memoria (ADR-0005). Si la cátedra no responde (con un reintento), rechaza el JWT o la integración no está `PROVISIONED`, el servicio no arranca y lo informa en el log, sin mostrar valores.
 
 Los timeouts hacia la cátedra tienen un valor inicial de 2 segundos para conectar y 5 para la respuesta (ADR-0029). Se pueden cambiar con `CATALOGO_CATEDRA_CONNECT_TIMEOUT` y `CATALOGO_CATEDRA_READ_TIMEOUT` (por ejemplo, `3s`).
+
+El chequeo periódico de sincronización corre cada 5 minutos (ADR-0006). Se cambia con `CATALOGO_SYNC_CHECK_INTERVAL` (por ejemplo, `1m`).
 
 ### Clave pública del JWT de usuario
 
@@ -120,3 +122,5 @@ Lo que sirve a más de una feature se lleva a `shared` en cuanto aparece el segu
 | `config/CatedraIntegrationConfig` | Pide la integración al arrancar; sin ella, el servicio no arranca (ADR-0005) | Redis y Kafka, desde la M5 |
 | `config/JwtConfig`, `config/SecurityConfig` | Validación del JWT de usuario y reglas de acceso | Todos los endpoints |
 | `web/advice/GlobalExceptionHandler` | Errores `problem+json` | Todos los endpoints |
+| `config/ClockConfig` | La hora como `Clock` inyectado, para poder fijarla en las pruebas | `sync` |
+| `config/SchedulingConfig` | Habilita los disparadores por tiempo (`@Scheduled`) | `sync` (chequeo periódico) |
