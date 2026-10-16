@@ -6,11 +6,12 @@ Es uno de los tres repositorios de la entrega, junto con `turnos-service` y `app
 
 ## Estado
 
-Listado de categorías de profesionales (`GET /api/professional-categories`), con la seguridad activa: todo pedido exige un JWT de usuario válido emitido por `turnos-service`, salvo `/actuator/health`. Todavía no tiene sincronización con la cátedra, así que las tablas están vacías; faltan también la búsqueda de profesionales y la agenda.
+Listado de categorías de profesionales (`GET /api/professional-categories`), con la seguridad activa: todo pedido exige un JWT de usuario válido emitido por `turnos-service`, salvo `/actuator/health`. Al arrancar obtiene de la cátedra la configuración de la integración. Todavía no sincroniza el catálogo, así que las tablas están vacías; faltan también la búsqueda de profesionales y la agenda.
 
 ## Requisitos
 
 - **Docker** con Docker Compose. Alcanza para levantar el servicio y para correr las pruebas.
+- **Acceso a la red de la cátedra**, para levantar el servicio: al arrancar le pide la configuración de la integración, y sin respuesta no arranca. Las pruebas no lo necesitan.
 - **Java 25**, solo para compilar o correr las pruebas fuera de Docker. Gradle no hace falta instalarlo: se usa el wrapper (`./gradlew`).
 
 ## Configuración
@@ -28,8 +29,16 @@ cp .env.example .env
 | `DB_PASSWORD` | Clave de la base. Cambiarla | `cambiar-esta-clave` |
 | `CATALOGO_PORT` | Puerto del servicio en la máquina | `8081` |
 | `CATALOGO_DB_PORT` | Puerto de PostgreSQL en la máquina | `5433` |
+| `CATEDRA_API_URL` | URL base de la API de la cátedra | La que indica la cátedra |
+| `CATEDRA_TECHNICAL_TOKEN` | JWT técnico de la cuenta del proyecto ante la cátedra. Es un secreto | El `id_token` del registro de la cuenta técnica |
 
 El servicio recibe la conexión en `DB_URL`, `DB_USER` y `DB_PASSWORD`. Con Docker Compose, `DB_URL` se arma sola a partir de `DB_NAME`. No hay valores por defecto: si falta alguna, el servicio no arranca.
+
+### Integración con la cátedra
+
+En el `.env` van solo la URL base y el JWT técnico. Redis, Kafka y sus topics no se configuran: al arrancar, el servicio los pide con `GET /api/student/integration` y los guarda solo en memoria (ADR-0005). Si la cátedra no responde (con un reintento), rechaza el JWT o la integración no está `PROVISIONED`, el servicio no arranca y lo informa en el log, sin mostrar valores.
+
+Los timeouts hacia la cátedra tienen un valor inicial de 2 segundos para conectar y 5 para la respuesta (ADR-0029). Se pueden cambiar con `CATALOGO_CATEDRA_CONNECT_TIMEOUT` y `CATALOGO_CATEDRA_READ_TIMEOUT` (por ejemplo, `3s`).
 
 ### Clave pública del JWT de usuario
 
@@ -70,7 +79,7 @@ Agregando `-v` se borra también el volumen con los datos de la base.
 
 ### Sin Docker Compose
 
-Para probar el servicio a mano sin configurar nada, con una base descartable:
+Para probar el servicio a mano sin configurar nada, con una base descartable y una cátedra simulada (no hace falta la red de la cátedra):
 
 ```
 ./gradlew bootTestRun
@@ -84,7 +93,7 @@ Necesita Docker en ejecución; los datos se pierden al detenerlo.
 ./gradlew test
 ```
 
-Las pruebas usan PostgreSQL real con Testcontainers, así que **Docker tiene que estar corriendo**. No hay que levantar nada a mano ni definir variables. El detalle de qué prueba cada cosa está en [`src/test/README.md`](src/test/README.md).
+Las pruebas usan PostgreSQL real y una cátedra simulada con WireMock, las dos en contenedores de Testcontainers, así que **Docker tiene que estar corriendo**. Ninguna prueba habla con la cátedra real. No hay que levantar nada a mano ni definir variables. El detalle de qué prueba cada cosa está en [`src/test/README.md`](src/test/README.md).
 
 Las mismas pruebas corren en GitHub Actions en cada pull request hacia `develop` o `main` (`.github/workflows/ci.yml`).
 
@@ -95,5 +104,5 @@ El código sigue la arquitectura hexagonal de la cátedra: un paquete por featur
 ```
 com.example.catalogo
 ├── category/      feature de categorías de profesionales
-└── shared/        configuración, seguridad y manejo de errores comunes
+└── shared/        configuración (cliente e integración de la cátedra, seguridad) y manejo de errores comunes
 ```
