@@ -9,6 +9,7 @@ import java.security.KeyPair;
 import java.time.Duration;
 import java.time.Instant;
 
+import com.example.catalogo.TestCatedraConfiguration;
 import com.example.catalogo.TestJwtKeysConfiguration;
 import com.example.catalogo.TestcontainersConfiguration;
 import com.example.catalogo.category.infrastructure.persistence.entity.CategoryEntity;
@@ -30,7 +31,7 @@ import org.springframework.test.web.servlet.MockMvc;
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-@Import({ TestcontainersConfiguration.class, TestJwtKeysConfiguration.class })
+@Import({ TestcontainersConfiguration.class, TestJwtKeysConfiguration.class, TestCatedraConfiguration.class })
 class CategoryAccessTest {
 
 	private static final String CATEGORIES = "/api/professional-categories";

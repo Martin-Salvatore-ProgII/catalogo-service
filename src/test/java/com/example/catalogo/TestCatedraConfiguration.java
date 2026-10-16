@@ -1,0 +1,30 @@
+package com.example.catalogo;
+
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.test.context.DynamicPropertyRegistrar;
+import org.testcontainers.containers.GenericContainer;
+
+/**
+ * Le da al servicio una cátedra falsa que responde la integración en estado PROVISIONED. Desde la
+ * #28 el contexto pide la integración al arrancar, así que toda prueba que levanta la aplicación
+ * completa la necesita. Ninguna prueba habla con la cátedra real (ADR-0044).
+ */
+@TestConfiguration(proxyBeanMethods = false)
+public class TestCatedraConfiguration {
+
+	@Bean
+	public GenericContainer<?> catedraContainer() {
+		return FakeCatedra.newContainerWithIntegration();
+	}
+
+	// Los valores se leen recién cuando Spring los pide, con el contenedor ya levantado.
+	@Bean
+	public DynamicPropertyRegistrar catedraProperties(GenericContainer<?> catedraContainer) {
+		return registry -> {
+			registry.add("catalogo.catedra.api-url", () -> FakeCatedra.baseUrl(catedraContainer));
+			registry.add("catalogo.catedra.technical-token", () -> FakeCatedra.TECHNICAL_TOKEN);
+		};
+	}
+
+}

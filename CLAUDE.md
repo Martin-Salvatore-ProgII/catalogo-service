@@ -23,11 +23,11 @@ Las pruebas necesitan Docker en ejecución (PostgreSQL real con Testcontainers).
 ## Qué hay construido
 
 - **Feature `category`:** `GET /api/professional-categories`, solo lectura. Es la feature de referencia para las siguientes.
-- **`shared/infrastructure/config`:** `JwtConfig` (valida el JWT con la clave pública), `SecurityConfig` (reglas de acceso y CORS).
+- **`shared/infrastructure/config`:** `JwtConfig` (valida el JWT con la clave pública), `SecurityConfig` (reglas de acceso y CORS), `CatedraRestClientConfig` (cliente HTTP de la cátedra, con JWT técnico y timeouts) y `CatedraIntegrationConfig` (pide la integración al arrancar; sin ella, no arranca).
 - **`shared/infrastructure/web/advice`:** `GlobalExceptionHandler`.
 - **Migración `V1`:** tablas `professional_category`, `professional` y `weekly_schedule`.
 
-Todavía no hay: sincronización con la cátedra (snapshot, Redis, Kafka), las tablas `SYNC_STATE` y `PROCESSED_EVENT`, la respuesta `503 CATALOG_NOT_READY`, la búsqueda de profesionales ni la agenda. Tampoco HTTPS (ADR-0035).
+Todavía no hay: sincronización del catálogo (snapshot, Redis, Kafka), las tablas `SYNC_STATE` y `PROCESSED_EVENT`, la respuesta `503 CATALOG_NOT_READY`, la búsqueda de profesionales ni la agenda. Tampoco HTTPS (ADR-0035).
 
 ## Lo propio de este servicio
 
@@ -82,7 +82,8 @@ Spring Boot 4, Spring Security 7 y Jackson 3 cambiaron cosas respecto de version
 **Cómo se arma cada tipo de prueba.**
 
 - **Controller:** `@WebMvcTest` con `@AutoConfigureMockMvc(addFilters = false)`. Sin eso, la seguridad responde 401 antes de llegar al controller. Las reglas de acceso se prueban aparte.
-- **Seguridad y recorridos completos:** `@SpringBootTest` + `@AutoConfigureMockMvc`, importando `TestcontainersConfiguration` y `TestJwtKeysConfiguration`. Sin la segunda, el contexto no arranca porque falta la clave del JWT.
+- **Seguridad y recorridos completos:** `@SpringBootTest` + `@AutoConfigureMockMvc`, importando `TestcontainersConfiguration`, `TestJwtKeysConfiguration` y `TestCatedraConfiguration`. Sin la segunda, el contexto no arranca porque falta la clave del JWT; sin la tercera, porque no obtiene la integración de la cátedra.
+- **Clientes de la cátedra:** sin Spring, contra `FakeCatedra` (WireMock en un contenedor). Las respuestas se programan por la API de administración de WireMock; la librería de WireMock no está en el proyecto (su Jetty choca con Spring Boot 4).
 - **Adaptador de persistencia:** `@DataJpaTest` + `@AutoConfigureTestDatabase(replace = NONE)` + `@Import` de `TestcontainersConfiguration`, el adaptador y su mapper. Para leer de verdad de PostgreSQL hay que hacer `flush()` y `clear()` antes: sin eso JPA responde desde memoria, y los errores de restricciones de una colección no aparecen.
 - **Casos de uso y fachada:** JUnit y Mockito, sin Spring.
 
@@ -97,6 +98,8 @@ Spring Boot 4, Spring Security 7 y Jackson 3 cambiaron cosas respecto de version
 **Errores.** `GlobalExceptionHandler` tiene un manejador genérico de `Exception` que responde 500. La excepción de cada feature necesita su propio manejador ahí, o termina como 500. `ProblemDetail` agrega solo el campo `instance`; el `code`, el `path` y los `fieldErrors` del contrato se agregan con `setProperty`.
 
 **Base de datos.** El esquema lo define Flyway; Hibernate solo valida (`ddl-auto: validate`). Una migración ya mergeada no se edita: el cambio va en la siguiente (`V2__...`). Los nombres de columnas se derivan solos de los campos de la entity (`createdAt` es `created_at`).
+
+**Cliente HTTP.** Los clientes REST usan `JdkClientHttpRequestFactory` (`java.net.http`). `SimpleClientHttpRequestFactory` usa `HttpURLConnection`, que repite un GET por su cuenta cuando se corta la conexión: un reintento oculto que se suma a los del ADR-0029. `CatedraIntegrationConfigTest` lo detecta contando pedidos.
 
 **Docker.** Si se cambia código y se prueba con Compose, hay que pasar `--build`, o corre la imagen vieja.
 
