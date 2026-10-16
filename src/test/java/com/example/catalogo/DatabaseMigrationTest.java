@@ -17,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Verifica que las migraciones de Flyway dejan el esquema esperado en PostgreSQL. Los datos de
  * ejemplo tienen la forma de los que publica la cátedra. Cada prueba se deshace al terminar.
  */
-@Import({ TestcontainersConfiguration.class, TestJwtKeysConfiguration.class })
+@Import({ TestcontainersConfiguration.class, TestJwtKeysConfiguration.class, TestCatedraConfiguration.class })
 @SpringBootTest
 @Transactional
 class DatabaseMigrationTest {
