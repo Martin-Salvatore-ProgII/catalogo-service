@@ -8,6 +8,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.example.catalogo.sync.application.exception.CatalogNotReadyException;
+import com.example.catalogo.sync.application.service.SyncService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.junit.jupiter.api.Test;
@@ -16,6 +18,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -32,6 +35,21 @@ class GlobalExceptionHandlerTest {
 
 	@Autowired
 	private MockMvc mockMvc;
+
+	// El interceptor de @RequiresCatalogReady se carga en todo test web y necesita la fachada de sync.
+	@MockitoBean
+	private SyncService syncService;
+
+	@Test
+	void catalogNotReadyReturnsServiceUnavailableWithItsCode() throws Exception {
+		mockMvc.perform(get("/test/catalog-not-ready"))
+				.andExpect(status().isServiceUnavailable())
+				.andExpect(content().contentTypeCompatibleWith(PROBLEM_JSON))
+				.andExpect(jsonPath("$.status").value(503))
+				.andExpect(jsonPath("$.code").value("CATALOG_NOT_READY"))
+				.andExpect(jsonPath("$.detail").value("The catalog has no local version yet"))
+				.andExpect(jsonPath("$.path").value("/test/catalog-not-ready"));
+	}
 
 	@Test
 	void invalidBodyReturnsValidationErrorWithFieldErrors() throws Exception {
@@ -83,7 +101,7 @@ class GlobalExceptionHandlerTest {
 				.andExpect(content().string(not(containsString("internal detail"))));
 	}
 
-	// Controller solo para estas pruebas: el servicio todavía no tiene endpoints propios.
+	// Controller solo para estas pruebas: provoca cada tipo de error sin depender de una feature.
 	@RestController
 	static class TestController {
 
@@ -94,6 +112,11 @@ class GlobalExceptionHandlerTest {
 		@GetMapping("/test/failure")
 		void fail() {
 			throw new IllegalStateException("internal detail");
+		}
+
+		@GetMapping("/test/catalog-not-ready")
+		void catalogNotReady() {
+			throw new CatalogNotReadyException();
 		}
 
 	}

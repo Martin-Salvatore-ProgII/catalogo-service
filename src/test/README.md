@@ -53,6 +53,8 @@ Las pruebas siguen la estructura de paquetes del código: cada clase se prueba e
 | Escritura de profesionales y horarios en PostgreSQL: todos los campos, horas y días, guardar por id, reemplazar, borrar todo y volver a guardar | `professional/infrastructure/persistence/adapter/*Test` | Sí |
 | Sincronización desde el snapshot de punta a punta: carga al arrancar con la base vacía, no repite con versión local, y una referencia inconsistente deja la copia anterior intacta y registra el error | `sync/CatalogSnapshotSyncTest` | Sí |
 | Reglas del ciclo de sincronización: cuándo se pide el snapshot, el orden de borrado y guardado, el pedido fuera de la transacción, otro ciclo que ganó, errores de la cátedra y propios | `sync/application/usecases/*Test` | No |
+| Estado de sincronización y catálogo no listo con la aplicación completa: el snapshot del arranque, 401 sin token, 503 `CATALOG_NOT_READY` en categorías sin versión local y `sync-status` respondiendo igual | `sync/CatalogReadinessAccessTest` | Sí |
+| Respuesta HTTP del estado de sincronización: todos los campos, los vacíos en `null`, responde aunque el catálogo no esté listo | `sync/infrastructure/web/controller/SyncControllerTest` | No |
 | Disparador del arranque: borra la marca de una caída antes de sincronizar | `sync/infrastructure/startup/CatalogSyncStartupListenerTest` | No |
 | Estado de sincronización en PostgreSQL: fila inicial, avance solo desde la versión esperada (ADR-0007), fallas que no tocan la versión, marca de sincronización en curso | `sync/infrastructure/persistence/adapter/JpaSyncStateRepositoryAdapterTest` | Sí |
 | Esquema y restricciones de la base, incluida la fila única de `sync_state` | `DatabaseMigrationTest` | Sí |

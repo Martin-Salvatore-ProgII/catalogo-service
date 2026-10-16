@@ -1,5 +1,7 @@
 package com.example.catalogo.category.infrastructure.web.controller;
 
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -12,6 +14,8 @@ import java.util.List;
 import com.example.catalogo.category.application.service.CategoryService;
 import com.example.catalogo.category.domain.model.Category;
 import com.example.catalogo.category.infrastructure.web.mapper.CategoryDtoMapper;
+import com.example.catalogo.sync.application.exception.CatalogNotReadyException;
+import com.example.catalogo.sync.application.service.SyncService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -31,6 +35,10 @@ class CategoryControllerTest {
 
 	@MockitoBean
 	private CategoryService categoryService;
+
+	// La usa el interceptor de @RequiresCatalogReady. Como mock no lanza nada: el catálogo está listo.
+	@MockitoBean
+	private SyncService syncService;
 
 	@Test
 	void returnsTheCategoriesInTheOrderGivenByTheService() throws Exception {
@@ -64,6 +72,16 @@ class CategoryControllerTest {
 		mockMvc.perform(get("/api/professional-categories"))
 				.andExpect(status().isOk())
 				.andExpect(content().json("[]"));
+	}
+
+	@Test
+	void answersCatalogNotReadyWithoutReachingTheService() throws Exception {
+		doThrow(new CatalogNotReadyException()).when(syncService).requireCatalogReady();
+
+		mockMvc.perform(get("/api/professional-categories"))
+				.andExpect(status().isServiceUnavailable())
+				.andExpect(jsonPath("$.code").value("CATALOG_NOT_READY"));
+		verifyNoInteractions(categoryService);
 	}
 
 	private Category category(Long id, String name, String description) {

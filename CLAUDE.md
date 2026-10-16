@@ -22,15 +22,15 @@ Las pruebas necesitan Docker en ejecución (PostgreSQL real con Testcontainers).
 
 ## Qué hay construido
 
-- **Feature `category`:** `GET /api/professional-categories`. Su puerto también ofrece la escritura que usa la sincronización. Es la feature de referencia para las siguientes.
+- **Feature `category`:** `GET /api/professional-categories`, con `@RequiresCatalogReady`. Su puerto también ofrece la escritura que usa la sincronización. Es la feature de referencia para las siguientes.
 - **`shared/infrastructure/config`:** `JwtConfig` (valida el JWT con la clave pública), `SecurityConfig` (reglas de acceso y CORS), `CatedraRestClientConfig` (cliente HTTP de la cátedra, con JWT técnico y timeouts) y `CatedraIntegrationConfig` (pide la integración al arrancar; sin ella, no arranca).
 - **Feature `professional`:** por ahora solo la escritura de profesionales y horarios (`ProfessionalRepository`, `WeeklyScheduleRepository`): guardar por id y borrar todo. Los horarios viven acá porque solo los usan la búsqueda y la agenda.
-- **Feature `sync`:** `SynchronizeCatalogUseCase` (CU-01; por ahora, sin versión local hace el snapshot del CU-02) y `ClearInterruptedSyncUseCase`. Los disparan `CatalogSyncStartupListener` al arrancar y `CatalogSyncScheduler` cada `catalogo.sync.check-interval` (ADR-0006). Solo las escrituras van en la transacción (`TransactionOperations`): el pedido a la cátedra queda antes y el registro del error, después. La versión avanza con un `UPDATE` condicionado a la versión esperada (ADR-0007). En la M5 se le suma la decisión con Redis al mismo caso de uso, sin tocar los disparadores.
+- **Feature `sync`:** `SynchronizeCatalogUseCase` (CU-01; por ahora, sin versión local hace el snapshot del CU-02) y `ClearInterruptedSyncUseCase`. Los disparan `CatalogSyncStartupListener` al arrancar y `CatalogSyncScheduler` cada `catalogo.sync.check-interval` (ADR-0006). Solo las escrituras van en la transacción (`TransactionOperations`): el pedido a la cátedra queda antes y el registro del error, después. La versión avanza con un `UPDATE` condicionado a la versión esperada (ADR-0007). En la M5 se le suma la decisión con Redis al mismo caso de uso, sin tocar los disparadores. También expone `GET /api/catalog/sync-status` y hace cumplir `@RequiresCatalogReady` con `CatalogReadyInterceptor`: sin versión local, 503 `CATALOG_NOT_READY` antes de entrar al controller.
 - **`shared/infrastructure/web/advice`:** `GlobalExceptionHandler`.
 - **`shared/infrastructure/rest`:** `CatedraReadExecutor`, la lectura a la cátedra con un reintento y mensajes seguros. Todo cliente REST de la cátedra la usa. La tabla de qué hay en `shared` y quién lo usa está en el README.
 - **Migraciones:** `V1` con las tablas `professional_category`, `professional` y `weekly_schedule`; `V2` con `sync_state`, una sola fila (`id = 1`) que crea la propia migración.
 
-Todavía no hay: sincronización incremental (Redis, Kafka), la tabla `PROCESSED_EVENT`, la respuesta `503 CATALOG_NOT_READY`, la búsqueda de profesionales ni la agenda. Tampoco HTTPS (ADR-0035).
+Todavía no hay: sincronización incremental (Redis, Kafka), la tabla `PROCESSED_EVENT`, la búsqueda de profesionales ni la agenda. Tampoco HTTPS (ADR-0035).
 
 ## Lo propio de este servicio
 
@@ -41,7 +41,7 @@ Todavía no hay: sincronización incremental (Redis, Kafka), la tabla `PROCESSED
 - **Borrar todo es `deleteAllInBatch()`:** un solo `DELETE`, inmediato. Un borrado por entity Hibernate lo ejecuta después de los `INSERT`, y volver a guardar los mismos ids en la misma transacción (el snapshot) chocaría.
 - **Las reglas de lectura se declaran en el puerto** (`findAllEnabledOrderedByName`) y las ejecuta la base. No esconder un filtro dentro de la consulta de un `findAll`.
 - **Este servicio no emite tokens.** Solo tiene la clave pública. En las pruebas, `TestJwtKeysConfiguration` hace el papel de turnos: genera el par, le pasa la pública al servicio y firma tokens con `signToken(...)`.
-- **Las búsquedas se responden con la copia local,** nunca consultando a la cátedra (Constitución P-06).
+- **Las búsquedas se responden con la copia local,** nunca consultando a la cátedra (Constitución P-06). Todo endpoint que responde con la copia local lleva `@RequiresCatalogReady` (`docs/arq/contratos.md`).
 - **El `.env` de este repo no usa prefijo** (`DB_NAME`, `DB_USER`); el de turnos sí. No se pueden repetir nombres entre los dos (ver `docs/arq/despliegue.md`).
 
 ## Probar con el sistema completo
@@ -87,7 +87,7 @@ Spring Boot 4, Spring Security 7 y Jackson 3 cambiaron cosas respecto de version
 
 **Cómo se arma cada tipo de prueba.**
 
-- **Controller:** `@WebMvcTest` con `@AutoConfigureMockMvc(addFilters = false)`. Sin eso, la seguridad responde 401 antes de llegar al controller. Las reglas de acceso se prueban aparte.
+- **Controller:** `@WebMvcTest` con `@AutoConfigureMockMvc(addFilters = false)`. Sin eso, la seguridad responde 401 antes de llegar al controller. Las reglas de acceso se prueban aparte. Todo `@WebMvcTest` carga el interceptor de `@RequiresCatalogReady`, así que necesita `@MockitoBean SyncService` (como mock no lanza nada: el catálogo está listo).
 - **Seguridad y recorridos completos:** `@SpringBootTest` + `@AutoConfigureMockMvc`, importando `TestcontainersConfiguration`, `TestJwtKeysConfiguration` y `TestCatedraConfiguration`. Sin la segunda, el contexto no arranca porque falta la clave del JWT; sin la tercera, porque no obtiene la integración de la cátedra. **Ese contexto arranca con el snapshot real ya cargado** (8 categorías, 24 profesionales, 44 horarios): una prueba que necesita sus propios datos vacía las tablas con `CatalogTables.clear(...)`.
 - **Clientes de la cátedra:** sin Spring, contra `FakeCatedra` (WireMock en un contenedor). Las respuestas se programan por la API de administración de WireMock; la librería de WireMock no está en el proyecto (su Jetty choca con Spring Boot 4).
 - **Adaptador de persistencia:** `@DataJpaTest` + `@AutoConfigureTestDatabase(replace = NONE)` + `@Import` de `TestcontainersConfiguration`, el adaptador y su mapper. Para leer de verdad de PostgreSQL hay que hacer `flush()` y `clear()` antes: sin eso JPA responde desde memoria, y los errores de restricciones de una colección no aparecen.
