@@ -31,7 +31,7 @@ Para correr una sola clase:
 | `TestcontainersConfiguration` | Declara el contenedor de PostgreSQL que usan las pruebas. Se importa con `@Import` en cada prueba que necesite base | — |
 | `TestJwtKeysConfiguration` | Hace el papel de turnos: genera en memoria un par de claves RSA, le da la pública al servicio y permite firmar tokens de prueba. No hay ninguna clave en el repositorio | — |
 | `TestCatedraConfiguration` | Le da a la aplicación una cátedra falsa que responde la integración en estado `PROVISIONED`. Desde que el servicio la pide al arrancar, toda prueba con `@SpringBootTest` la importa | — |
-| `FakeCatedra` | Arma el contenedor de WireMock y le programa respuestas por su API de administración (incluidas demoras, cortes de conexión y escenarios). La respuesta de la integración está en `resources/catedra/integration.json` | — |
+| `FakeCatedra` | Arma el contenedor de WireMock y le programa respuestas por su API de administración (incluidas demoras, cortes de conexión y escenarios). La respuesta de la integración está en `resources/catedra/integration.json`; la del snapshot, en `resources/catedra/snapshot.json`, una copia de un snapshot real de la cátedra | — |
 | `TestCatalogoApplication` | No es una prueba: levanta la aplicación con una base descartable para probarla a mano | Sí |
 
 ## Pruebas por tema
@@ -43,7 +43,9 @@ Las pruebas siguen la estructura de paquetes del código: cada clase se prueba e
 | Seguridad del endpoint de categorías: sin token, token vencido, firma inválida, y el caso válido de punta a punta | `category/CategoryAccessTest` | Sí |
 | Reglas de acceso: rutas públicas, sin token, con token, CORS | `shared/infrastructure/config/SecurityConfigTest` | Sí |
 | Validación del JWT: firma, vencimiento, login y roles | `shared/infrastructure/config/JwtConfigTest` | No |
-| Integración con la cátedra al arrancar: `PROVISIONED`, otro estado, JWT rechazado, cátedra lenta, caída o con error, un solo reintento, sin secretos en los mensajes | `shared/infrastructure/config/CatedraIntegrationConfigTest` | Sí |
+| Toda lectura a la cátedra: JWT rechazado, respuesta inesperada o ilegible, cátedra lenta, caída o con error, exactamente un reintento, sin la dirección en los mensajes | `shared/infrastructure/rest/CatedraReadExecutorTest` | Sí |
+| Integración con la cátedra al arrancar: campos, JWT técnico, `PROVISIONED` u otro estado, sin secretos al imprimirla | `shared/infrastructure/config/CatedraIntegrationConfigTest` | Sí |
+| Cliente del snapshot: el snapshot real de la cátedra, todos los campos, horas `HH:mm`, campos desconocidos, día inválido, snapshot incompleto o con colecciones vacías | `sync/infrastructure/rest/adapter/CatedraSnapshotAdapterTest` | Sí |
 | Listado de categorías: regla de negocio | `category/application/usecases/*Test` | No |
 | Listado de categorías: forma de la respuesta HTTP | `category/infrastructure/web/controller/CategoryControllerTest` | No |
 | Lectura y escritura de categorías en PostgreSQL: solo habilitadas, por nombre; guardar por id, reemplazar, borrar todo y volver a guardar | `category/infrastructure/persistence/adapter/JpaCategoryRepositoryAdapterTest` | Sí |

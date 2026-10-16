@@ -1,7 +1,7 @@
 package com.example.catalogo.shared.infrastructure.config;
 
 /**
- * La integración con la cátedra no se pudo obtener o no está lista. Corta el arranque del
+ * La cátedra entregó la integración, pero no está lista para usarse. Corta el arranque del
  * servicio (ADR-0005).
  */
 public class CatedraIntegrationException extends RuntimeException {

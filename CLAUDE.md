@@ -25,8 +25,9 @@ Las pruebas necesitan Docker en ejecución (PostgreSQL real con Testcontainers).
 - **Feature `category`:** `GET /api/professional-categories`. Su puerto también ofrece la escritura que usa la sincronización. Es la feature de referencia para las siguientes.
 - **`shared/infrastructure/config`:** `JwtConfig` (valida el JWT con la clave pública), `SecurityConfig` (reglas de acceso y CORS), `CatedraRestClientConfig` (cliente HTTP de la cátedra, con JWT técnico y timeouts) y `CatedraIntegrationConfig` (pide la integración al arrancar; sin ella, no arranca).
 - **Feature `professional`:** por ahora solo la escritura de profesionales y horarios (`ProfessionalRepository`, `WeeklyScheduleRepository`): guardar por id y borrar todo. Los horarios viven acá porque solo los usan la búsqueda y la agenda.
-- **Feature `sync`:** por ahora solo la persistencia del estado de sincronización (`SyncStateRepository`). La versión avanza con un `UPDATE` condicionado a la versión esperada (ADR-0007).
+- **Feature `sync`:** la persistencia del estado de sincronización (`SyncStateRepository`) y el cliente del snapshot (`CatalogSnapshotPort`, `CatedraSnapshotAdapter`). La versión avanza con un `UPDATE` condicionado a la versión esperada (ADR-0007).
 - **`shared/infrastructure/web/advice`:** `GlobalExceptionHandler`.
+- **`shared/infrastructure/rest`:** `CatedraReadExecutor`, la lectura a la cátedra con un reintento y mensajes seguros. Todo cliente REST de la cátedra la usa. La tabla de qué hay en `shared` y quién lo usa está en el README.
 - **Migraciones:** `V1` con las tablas `professional_category`, `professional` y `weekly_schedule`; `V2` con `sync_state`, una sola fila (`id = 1`) que crea la propia migración.
 
 Todavía no hay: sincronización del catálogo (snapshot, Redis, Kafka), la tabla `PROCESSED_EVENT`, la respuesta `503 CATALOG_NOT_READY`, la búsqueda de profesionales ni la agenda. Tampoco HTTPS (ADR-0035).
@@ -65,6 +66,7 @@ El detalle está en `docs/guia-git.md`. En resumen:
 - **Comentarios de decisión:** donde se toma una decisión que alguien podría cuestionar, dos o tres líneas con el porqué, en ese lugar. No se comenta lo obvio.
 - Cada paquete nuevo lleva su `package-info.java` (ADR-0055).
 - Cada dependencia entra al build en la issue que la usa por primera vez.
+- **Lo reutilizable va a `shared` con el segundo uso** (ADR-0063): no se copia código; se reformula el existente en la misma issue, se prueba una vez en `shared` y se actualiza la tabla del README.
 - Las pruebas de cada pieza entran en la misma issue que la pieza.
 
 ## Particularidades técnicas
