@@ -22,8 +22,9 @@ Las pruebas necesitan Docker en ejecución (PostgreSQL real con Testcontainers).
 
 ## Qué hay construido
 
-- **Feature `category`:** `GET /api/professional-categories`, solo lectura. Es la feature de referencia para las siguientes.
+- **Feature `category`:** `GET /api/professional-categories`. Su puerto también ofrece la escritura que usa la sincronización. Es la feature de referencia para las siguientes.
 - **`shared/infrastructure/config`:** `JwtConfig` (valida el JWT con la clave pública), `SecurityConfig` (reglas de acceso y CORS), `CatedraRestClientConfig` (cliente HTTP de la cátedra, con JWT técnico y timeouts) y `CatedraIntegrationConfig` (pide la integración al arrancar; sin ella, no arranca).
+- **Feature `professional`:** por ahora solo la escritura de profesionales y horarios (`ProfessionalRepository`, `WeeklyScheduleRepository`): guardar por id y borrar todo. Los horarios viven acá porque solo los usan la búsqueda y la agenda.
 - **Feature `sync`:** por ahora solo la persistencia del estado de sincronización (`SyncStateRepository`). La versión avanza con un `UPDATE` condicionado a la versión esperada (ADR-0007).
 - **`shared/infrastructure/web/advice`:** `GlobalExceptionHandler`.
 - **Migraciones:** `V1` con las tablas `professional_category`, `professional` y `weekly_schedule`; `V2` con `sync_state`, una sola fila (`id = 1`) que crea la propia migración.
@@ -35,6 +36,8 @@ Todavía no hay: sincronización del catálogo (snapshot, Redis, Kafka), la tabl
 - **Los datos no son propios.** Las tablas copian lo que publica la cátedra. El `id` de cada fila es el de la cátedra: las entities no llevan `@GeneratedValue` ni auditoría automática, y las fechas son las de la cátedra.
 - **La base no valida el contenido de esos datos** (RNF-09): textos sin largo máximo, sin reglas sobre horas ni duraciones. Un valor inesperado se guarda y no frena la sincronización.
 - **Las horas de atención se guardan sin zona,** tal como vienen, y se tratan como hora local (REF §4). No convertirlas.
+- **Entre features, solo por el `domain`** (ADR-0062): `sync` escribe categorías y profesionales con los puertos de `category` y `professional`, nunca con sus entities ni repositorios JPA. Por eso `ProfessionalEntity` guarda `categoryId` y no una relación JPA a `CategoryEntity`. Lo verifica `ArchitectureTest`.
+- **Borrar todo es `deleteAllInBatch()`:** un solo `DELETE`, inmediato. Un borrado por entity Hibernate lo ejecuta después de los `INSERT`, y volver a guardar los mismos ids en la misma transacción (el snapshot) chocaría.
 - **Las reglas de lectura se declaran en el puerto** (`findAllEnabledOrderedByName`) y las ejecuta la base. No esconder un filtro dentro de la consulta de un `findAll`.
 - **Este servicio no emite tokens.** Solo tiene la clave pública. En las pruebas, `TestJwtKeysConfiguration` hace el papel de turnos: genera el par, le pasa la pública al servicio y firma tokens con `signToken(...)`.
 - **Las búsquedas se responden con la copia local,** nunca consultando a la cátedra (Constitución P-06).

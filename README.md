@@ -99,10 +99,12 @@ Las mismas pruebas corren en GitHub Actions en cada pull request hacia `develop`
 
 ## Estructura
 
-El código sigue la arquitectura hexagonal de la cátedra: un paquete por feature con las capas `domain`, `application` e `infrastructure`, y un paquete `shared` para lo transversal. Cada paquete tiene un `package-info.java` que explica qué va ahí. La regla de dependencias entre capas la verifica `ArchitectureTest`.
+El código sigue la arquitectura hexagonal de la cátedra: un paquete por feature con las capas `domain`, `application` e `infrastructure`, y un paquete `shared` para lo transversal. Cada paquete tiene un `package-info.java` que explica qué va ahí. La regla de dependencias entre capas, y que una feature solo use el `domain` de otra (ADR-0062), las verifica `ArchitectureTest`.
 
 ```
 com.example.catalogo
 ├── category/      feature de categorías de profesionales
+├── professional/  feature de profesionales y sus horarios semanales
+├── sync/          feature de sincronización con la cátedra (por ahora, su estado)
 └── shared/        configuración (cliente e integración de la cátedra, seguridad) y manejo de errores comunes
 ```

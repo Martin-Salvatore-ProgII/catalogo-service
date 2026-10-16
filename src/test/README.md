@@ -27,7 +27,7 @@ Para correr una sola clase:
 | Archivo | Para qué | Necesita Docker |
 | --- | --- | --- |
 | `CatalogoApplicationTests` | Verifica que la aplicación arranca completa contra PostgreSQL, con Flyway | Sí |
-| `ArchitectureTest` | Verifica la regla de dependencias de la arquitectura hexagonal (ADR-0053) | No |
+| `ArchitectureTest` | Verifica la regla de dependencias de la arquitectura hexagonal (ADR-0053) y que una feature solo use el `domain` de otra (ADR-0062) | No |
 | `TestcontainersConfiguration` | Declara el contenedor de PostgreSQL que usan las pruebas. Se importa con `@Import` en cada prueba que necesite base | — |
 | `TestJwtKeysConfiguration` | Hace el papel de turnos: genera en memoria un par de claves RSA, le da la pública al servicio y permite firmar tokens de prueba. No hay ninguna clave en el repositorio | — |
 | `TestCatedraConfiguration` | Le da a la aplicación una cátedra falsa que responde la integración en estado `PROVISIONED`. Desde que el servicio la pide al arrancar, toda prueba con `@SpringBootTest` la importa | — |
@@ -46,7 +46,8 @@ Las pruebas siguen la estructura de paquetes del código: cada clase se prueba e
 | Integración con la cátedra al arrancar: `PROVISIONED`, otro estado, JWT rechazado, cátedra lenta, caída o con error, un solo reintento, sin secretos en los mensajes | `shared/infrastructure/config/CatedraIntegrationConfigTest` | Sí |
 | Listado de categorías: regla de negocio | `category/application/usecases/*Test` | No |
 | Listado de categorías: forma de la respuesta HTTP | `category/infrastructure/web/controller/CategoryControllerTest` | No |
-| Lectura de categorías en PostgreSQL: solo habilitadas, por nombre | `category/infrastructure/persistence/adapter/JpaCategoryRepositoryAdapterTest` | Sí |
+| Lectura y escritura de categorías en PostgreSQL: solo habilitadas, por nombre; guardar por id, reemplazar, borrar todo y volver a guardar | `category/infrastructure/persistence/adapter/JpaCategoryRepositoryAdapterTest` | Sí |
+| Escritura de profesionales y horarios en PostgreSQL: todos los campos, horas y días, guardar por id, reemplazar, borrar todo y volver a guardar | `professional/infrastructure/persistence/adapter/*Test` | Sí |
 | Estado de sincronización en PostgreSQL: fila inicial, avance solo desde la versión esperada (ADR-0007), fallas que no tocan la versión, marca de sincronización en curso | `sync/infrastructure/persistence/adapter/JpaSyncStateRepositoryAdapterTest` | Sí |
 | Esquema y restricciones de la base, incluida la fila única de `sync_state` | `DatabaseMigrationTest` | Sí |
 
