@@ -2,6 +2,7 @@ package com.example.catalogo.shared.infrastructure.web.advice;
 
 import java.util.List;
 
+import com.example.catalogo.sync.application.exception.CatalogNotReadyException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -25,6 +26,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
 	private static final String VALIDATION_ERROR = "VALIDATION_ERROR";
+	private static final String CATALOG_NOT_READY = "CATALOG_NOT_READY";
 
 	@Override
 	protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
@@ -40,6 +42,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		problem.setProperty("code", VALIDATION_ERROR);
 		problem.setProperty("fieldErrors", fieldErrors);
 		return handleExceptionInternal(ex, problem, headers, status, request);
+	}
+
+	// Mientras no haya versión local no hay copia con la que responder (docs/arq/contratos.md).
+	@ExceptionHandler(CatalogNotReadyException.class)
+	public ResponseEntity<Object> handleCatalogNotReady(CatalogNotReadyException ex, WebRequest request) {
+		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+		problem.setProperty("code", CATALOG_NOT_READY);
+		return handleExceptionInternal(ex, problem, new HttpHeaders(), HttpStatus.SERVICE_UNAVAILABLE, request);
 	}
 
 	@ExceptionHandler(Exception.class)

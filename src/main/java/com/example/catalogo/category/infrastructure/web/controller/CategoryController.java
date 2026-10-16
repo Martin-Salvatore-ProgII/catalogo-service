@@ -5,6 +5,7 @@ import java.util.List;
 import com.example.catalogo.category.application.service.CategoryService;
 import com.example.catalogo.category.infrastructure.web.dto.CategoryResponse;
 import com.example.catalogo.category.infrastructure.web.mapper.CategoryDtoMapper;
+import com.example.catalogo.shared.infrastructure.web.catalog.RequiresCatalogReady;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,6 +21,7 @@ public class CategoryController {
 	private final CategoryDtoMapper categoryDtoMapper;
 
 	@GetMapping
+	@RequiresCatalogReady
 	public ResponseEntity<List<CategoryResponse>> getAllCategories() {
 		List<CategoryResponse> categories = categoryService.getAllCategories().stream()
 				.map(categoryDtoMapper::toResponse)
