@@ -22,6 +22,10 @@ catalogo:
     # CATALOGO_CATEDRA_CONNECT_TIMEOUT y CATALOGO_CATEDRA_READ_TIMEOUT.
     connect-timeout: 2s
     read-timeout: 5s
+  sync:
+    # Intervalo del chequeo periódico de sincronización (ADR-0006, RNF-09). Se puede cambiar con
+    # la variable CATALOGO_SYNC_CHECK_INTERVAL.
+    check-interval: 5m
   security:
     jwt:
       # Ubicación de la clave pública RSA con la que se valida el JWT de usuario que emite el
