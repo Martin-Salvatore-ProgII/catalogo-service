@@ -30,7 +30,8 @@ Para correr una sola clase:
 | `ArchitectureTest` | Verifica la regla de dependencias de la arquitectura hexagonal (ADR-0053) y que una feature solo use el `domain` de otra (ADR-0062) | No |
 | `TestcontainersConfiguration` | Declara el contenedor de PostgreSQL que usan las pruebas. Se importa con `@Import` en cada prueba que necesite base | — |
 | `TestJwtKeysConfiguration` | Hace el papel de turnos: genera en memoria un par de claves RSA, le da la pública al servicio y permite firmar tokens de prueba. No hay ninguna clave en el repositorio | — |
-| `TestCatedraConfiguration` | Le da a la aplicación una cátedra falsa que responde la integración en estado `PROVISIONED`. Desde que el servicio la pide al arrancar, toda prueba con `@SpringBootTest` la importa | — |
+| `TestCatedraConfiguration` | Le da a la aplicación una cátedra falsa que responde como la real: la integración en estado `PROVISIONED` y el snapshot real. Toda prueba con `@SpringBootTest` la importa, y su contexto arranca con el catálogo real cargado | — |
+| `CatalogTables` | Vacía las tablas del catálogo (y vuelve el estado de sincronización al inicial) para las pruebas con la aplicación completa que necesitan sus propios datos | — |
 | `FakeCatedra` | Arma el contenedor de WireMock y le programa respuestas por su API de administración (incluidas demoras, cortes de conexión y escenarios). La respuesta de la integración está en `resources/catedra/integration.json`; la del snapshot, en `resources/catedra/snapshot.json`, una copia de un snapshot real de la cátedra | — |
 | `TestCatalogoApplication` | No es una prueba: levanta la aplicación con una base descartable para probarla a mano | Sí |
 
@@ -50,6 +51,9 @@ Las pruebas siguen la estructura de paquetes del código: cada clase se prueba e
 | Listado de categorías: forma de la respuesta HTTP | `category/infrastructure/web/controller/CategoryControllerTest` | No |
 | Lectura y escritura de categorías en PostgreSQL: solo habilitadas, por nombre; guardar por id, reemplazar, borrar todo y volver a guardar | `category/infrastructure/persistence/adapter/JpaCategoryRepositoryAdapterTest` | Sí |
 | Escritura de profesionales y horarios en PostgreSQL: todos los campos, horas y días, guardar por id, reemplazar, borrar todo y volver a guardar | `professional/infrastructure/persistence/adapter/*Test` | Sí |
+| Sincronización desde el snapshot de punta a punta: carga al arrancar con la base vacía, no repite con versión local, y una referencia inconsistente deja la copia anterior intacta y registra el error | `sync/CatalogSnapshotSyncTest` | Sí |
+| Reglas del ciclo de sincronización: cuándo se pide el snapshot, el orden de borrado y guardado, el pedido fuera de la transacción, otro ciclo que ganó, errores de la cátedra y propios | `sync/application/usecases/*Test` | No |
+| Disparador del arranque: borra la marca de una caída antes de sincronizar | `sync/infrastructure/startup/CatalogSyncStartupListenerTest` | No |
 | Estado de sincronización en PostgreSQL: fila inicial, avance solo desde la versión esperada (ADR-0007), fallas que no tocan la versión, marca de sincronización en curso | `sync/infrastructure/persistence/adapter/JpaSyncStateRepositoryAdapterTest` | Sí |
 | Esquema y restricciones de la base, incluida la fila única de `sync_state` | `DatabaseMigrationTest` | Sí |
 
