@@ -49,8 +49,13 @@ Las pruebas siguen la estructura de paquetes del código: cada clase se prueba e
 | Cliente del snapshot: el snapshot real de la cátedra, todos los campos, horas `HH:mm`, campos desconocidos, día inválido, snapshot incompleto o con colecciones vacías | `sync/infrastructure/rest/adapter/CatedraSnapshotAdapterTest` | Sí |
 | Listado de categorías: regla de negocio | `category/application/usecases/*Test` | No |
 | Listado de categorías: forma de la respuesta HTTP | `category/infrastructure/web/controller/CategoryControllerTest` | No |
-| Lectura y escritura de categorías en PostgreSQL: solo habilitadas, por nombre; guardar por id, reemplazar, borrar todo y volver a guardar | `category/infrastructure/persistence/adapter/JpaCategoryRepositoryAdapterTest` | Sí |
+| Lectura y escritura de categorías en PostgreSQL: todas, o solo habilitadas por nombre; guardar por id, reemplazar, borrar todo y volver a guardar | `category/infrastructure/persistence/adapter/JpaCategoryRepositoryAdapterTest` | Sí |
 | Escritura de profesionales y horarios en PostgreSQL: todos los campos, horas y días, guardar por id, reemplazar, borrar todo y volver a guardar | `professional/infrastructure/persistence/adapter/*Test` | Sí |
+| Búsqueda de profesionales en PostgreSQL: por categoría, nombre parcial sin mayúsculas ni tildes (en los dos sentidos), `%` y `_` literales, filtros combinados, página y total, dirección del orden y desempate por id | `professional/infrastructure/persistence/adapter/JpaProfessionalRepositoryAdapterTest` | Sí |
+| Búsqueda de profesionales: regla de negocio (orden por defecto, espacios del nombre, categoría de cada resultado) | `professional/application/usecases/*Test` | No |
+| Búsqueda de profesionales: parámetros, orden, respuesta, cabeceras de paginación y cada filtro inválido | `professional/infrastructure/web/controller/ProfessionalControllerTest` | No |
+| Búsqueda de profesionales con la aplicación completa: 401 sin token, nombre sin tildes, filtros combinados, página y total, filtro inválido | `professional/ProfessionalSearchAccessTest` | Sí |
+| Convención de paginación: enlaces `Link` en cada posición de página, total, máximo configurable | `shared/infrastructure/web/pagination/*Test` | No |
 | Sincronización desde el snapshot de punta a punta: carga al arrancar con la base vacía, no repite con versión local, y una referencia inconsistente deja la copia anterior intacta y registra el error | `sync/CatalogSnapshotSyncTest` | Sí |
 | Reglas del ciclo de sincronización: cuándo se pide el snapshot, el orden de borrado y guardado, el pedido fuera de la transacción, otro ciclo que ganó, errores de la cátedra y propios | `sync/application/usecases/*Test` | No |
 | Estado de sincronización y catálogo no listo con la aplicación completa: el snapshot del arranque, 401 sin token, 503 `CATALOG_NOT_READY` en categorías sin versión local y `sync-status` respondiendo igual | `sync/CatalogReadinessAccessTest` | Sí |

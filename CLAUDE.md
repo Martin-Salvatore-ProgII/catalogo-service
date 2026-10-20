@@ -24,13 +24,13 @@ Las pruebas necesitan Docker en ejecución (PostgreSQL real con Testcontainers).
 
 - **Feature `category`:** `GET /api/professional-categories`, con `@RequiresCatalogReady`. Su puerto también ofrece la escritura que usa la sincronización. Es la feature de referencia para las siguientes.
 - **`shared/infrastructure/config`:** `JwtConfig` (valida el JWT con la clave pública), `SecurityConfig` (reglas de acceso y CORS), `CatedraRestClientConfig` (cliente HTTP de la cátedra, con JWT técnico y timeouts) y `CatedraIntegrationConfig` (pide la integración al arrancar; sin ella, no arranca).
-- **Feature `professional`:** por ahora solo la escritura de profesionales y horarios (`ProfessionalRepository`, `WeeklyScheduleRepository`): guardar por id y borrar todo. Los horarios viven acá porque solo los usan la búsqueda y la agenda.
+- **Feature `professional`:** la escritura de profesionales y horarios que usa la sincronización (`ProfessionalRepository`, `WeeklyScheduleRepository`), y `GET /api/professionals` con categoría, nombre y paginación. Los filtros son `Specification` de Spring Data que el adaptador combina; el nombre usa la extensión `unaccent` (migración `V3`). La categoría de cada resultado se lee con el puerto de `category`, no con un JOIN (ADR-0062), en una transacción `REPEATABLE READ`. Los horarios viven acá porque solo los usan la búsqueda y la agenda.
 - **Feature `sync`:** `SynchronizeCatalogUseCase` (CU-01; por ahora, sin versión local hace el snapshot del CU-02) y `ClearInterruptedSyncUseCase`. Los disparan `CatalogSyncStartupListener` al arrancar y `CatalogSyncScheduler` cada `catalogo.sync.check-interval` (ADR-0006). Solo las escrituras van en la transacción (`TransactionOperations`): el pedido a la cátedra queda antes y el registro del error, después. La versión avanza con un `UPDATE` condicionado a la versión esperada (ADR-0007). En la M5 se le suma la decisión con Redis al mismo caso de uso, sin tocar los disparadores. También expone `GET /api/catalog/sync-status` y hace cumplir `@RequiresCatalogReady` con `CatalogReadyInterceptor`: sin versión local, 503 `CATALOG_NOT_READY` antes de entrar al controller.
 - **`shared/infrastructure/web/advice`:** `GlobalExceptionHandler`.
 - **`shared/infrastructure/rest`:** `CatedraReadExecutor`, la lectura a la cátedra con un reintento y mensajes seguros. Todo cliente REST de la cátedra la usa. La tabla de qué hay en `shared` y quién lo usa está en el README.
-- **Migraciones:** `V1` con las tablas `professional_category`, `professional` y `weekly_schedule`; `V2` con `sync_state`, una sola fila (`id = 1`) que crea la propia migración.
+- **Migraciones:** `V1` con las tablas `professional_category`, `professional` y `weekly_schedule`; `V2` con `sync_state`, una sola fila (`id = 1`) que crea la propia migración; `V3` con la extensión `unaccent`.
 
-Todavía no hay: sincronización incremental (Redis, Kafka), la tabla `PROCESSED_EVENT`, la búsqueda de profesionales ni la agenda. Tampoco HTTPS (ADR-0035).
+Todavía no hay: sincronización incremental (Redis, Kafka), la tabla `PROCESSED_EVENT`, los filtros de habilitado y disponibilidad de la búsqueda, ni la agenda. Tampoco HTTPS (ADR-0035).
 
 ## Lo propio de este servicio
 
@@ -92,6 +92,8 @@ Spring Boot 4, Spring Security 7 y Jackson 3 cambiaron cosas respecto de version
 - **Clientes de la cátedra:** sin Spring, contra `FakeCatedra` (WireMock en un contenedor). Las respuestas se programan por la API de administración de WireMock; la librería de WireMock no está en el proyecto (su Jetty choca con Spring Boot 4).
 - **Adaptador de persistencia:** `@DataJpaTest` + `@AutoConfigureTestDatabase(replace = NONE)` + `@Import` de `TestcontainersConfiguration`, el adaptador y su mapper. Para leer de verdad de PostgreSQL hay que hacer `flush()` y `clear()` antes: sin eso JPA responde desde memoria, y los errores de restricciones de una colección no aparecen.
 - **Casos de uso y fachada:** JUnit y Mockito, sin Spring. La hora llega por un `Clock` inyectado (`ClockConfig`), que la prueba fija.
+
+**Parámetros de una lista.** Spring parte por comas un parámetro que se guarda en una lista: `sort=lastName,desc` llegaría como dos valores. `ProfessionalController` lo evita con un `@InitBinder`. En MockMvc, `.param()` no arma el query string; si la prueba mira los enlaces de `Link`, la URL va con los parámetros escritos.
 
 **Jackson 3.** Un campo primitivo (`boolean`, `int`) que no viene en el JSON hace fallar el pedido con 400. Un campo opcional de un DTO de entrada va con su tipo envoltorio (`Boolean`, `Integer`).
 
