@@ -45,6 +45,14 @@ class JpaCategoryRepositoryAdapterTest {
 	}
 
 	@Test
+	void findAllReturnsEnabledAndDisabledCategories() {
+		store(101L, "Cardiologia", true);
+		store(108L, "Salud mental", false);
+
+		assertThat(adapter.findAll()).extracting(Category::getId).containsExactlyInAnyOrder(101L, 108L);
+	}
+
+	@Test
 	void returnsCategoriesOrderedByName() {
 		store(103L, "Pediatria", true);
 		store(101L, "Traumatologia", true);

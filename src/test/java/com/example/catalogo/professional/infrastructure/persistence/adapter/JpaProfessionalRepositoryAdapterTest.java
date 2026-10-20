@@ -6,7 +6,12 @@ import java.time.Instant;
 import java.util.List;
 
 import com.example.catalogo.TestcontainersConfiguration;
+import com.example.catalogo.professional.domain.model.PageQuery;
+import com.example.catalogo.professional.domain.model.PageResult;
 import com.example.catalogo.professional.domain.model.Professional;
+import com.example.catalogo.professional.domain.model.ProfessionalSearchCriteria;
+import com.example.catalogo.professional.domain.model.ProfessionalSortField;
+import com.example.catalogo.professional.domain.model.ProfessionalSortOrder;
 import com.example.catalogo.professional.infrastructure.persistence.entity.ProfessionalEntity;
 import com.example.catalogo.professional.infrastructure.persistence.mapper.ProfessionalMapper;
 import com.example.catalogo.professional.infrastructure.persistence.repository.JpaProfessionalRepository;
@@ -27,6 +32,9 @@ class JpaProfessionalRepositoryAdapterTest {
 
 	private static final Instant CREATED_AT = Instant.parse("2026-09-01T03:00:00Z");
 	private static final Instant UPDATED_AT = Instant.parse("2026-09-10T13:40:00Z");
+	private static final PageQuery FIRST_PAGE = PageQuery.builder().page(0).size(20).build();
+	private static final List<ProfessionalSortOrder> BY_LAST_NAME = List.of(sortBy(ProfessionalSortField.LAST_NAME, false),
+			sortBy(ProfessionalSortField.FIRST_NAME, false));
 
 	@Autowired
 	private JpaProfessionalRepositoryAdapter adapter;
@@ -98,12 +106,145 @@ class JpaProfessionalRepositoryAdapterTest {
 		assertThat(jpaProfessionalRepository.findById(201L).orElseThrow().isEnabled()).isFalse();
 	}
 
+	// --- Búsqueda ---
+
+	@Test
+	void searchesByCategory() {
+		storeForSearch();
+
+		assertThat(idsOf(search(ProfessionalSearchCriteria.builder().categoryId(102L).build())))
+				.containsExactly(203L, 204L);
+	}
+
+	@Test
+	void findsAPartialMatchOnTheFullNameWithoutCaseOrAccents() {
+		storeForSearch();
+
+		// "Ana Gómez" se encuentra escrito sin tilde y en minúsculas, cruzando nombre y apellido.
+		assertThat(idsOf(search(byName("ana gom")))).containsExactly(201L);
+		assertThat(idsOf(search(byName("GOMEZ")))).containsExactly(201L);
+	}
+
+	@Test
+	void findsANameWithoutAccentsWhenTheSearchHasThem() {
+		storeForSearch();
+
+		// Al revés que el anterior: el dato no tiene tilde y la búsqueda sí.
+		assertThat(idsOf(search(byName("Martín")))).containsExactly(202L);
+	}
+
+	@Test
+	void matchesTheFirstNameOrTheLastNameAlone() {
+		storeForSearch();
+
+		assertThat(idsOf(search(byName("lucia")))).containsExactly(203L);
+		assertThat(idsOf(search(byName("vega")))).containsExactly(204L);
+	}
+
+	@Test
+	void takesLikeWildcardsInTheNameLiterally() {
+		storeForSearch();
+
+		// Sin escape, % y _ coincidirían con cualquier nombre.
+		assertThat(search(byName("%")).getContent()).isEmpty();
+		assertThat(search(byName("_")).getContent()).isEmpty();
+	}
+
+	@Test
+	void combinesTheCategoryAndTheName() {
+		storeForSearch();
+
+		ProfessionalSearchCriteria criteria = ProfessionalSearchCriteria.builder().categoryId(101L).name("a").build();
+		assertThat(idsOf(search(criteria))).containsExactly(201L, 202L);
+		criteria = ProfessionalSearchCriteria.builder().categoryId(102L).name("gomez").build();
+		assertThat(search(criteria).getContent()).isEmpty();
+	}
+
+	@Test
+	void returnsTheRequestedPageAndTheTotal() {
+		storeForSearch();
+
+		PageResult<Professional> secondPage = adapter.search(ProfessionalSearchCriteria.builder().build(), BY_LAST_NAME,
+				PageQuery.builder().page(1).size(3).build());
+
+		// Por apellido: Gómez, Paz, Rivas | Vega.
+		assertThat(idsOf(secondPage)).containsExactly(204L);
+		assertThat(secondPage.getTotalElements()).isEqualTo(4);
+		assertThat(secondPage.getPage()).isEqualTo(1);
+		assertThat(secondPage.getSize()).isEqualTo(3);
+	}
+
+	@Test
+	void ordersInTheRequestedDirection() {
+		storeForSearch();
+
+		PageResult<Professional> result = adapter.search(ProfessionalSearchCriteria.builder().build(),
+				List.of(sortBy(ProfessionalSortField.FIRST_NAME, true)), FIRST_PAGE);
+
+		// Por nombre, de la Z a la A: Nicolas, Martin, Lucia, Ana.
+		assertThat(idsOf(result)).containsExactly(204L, 202L, 203L, 201L);
+	}
+
+	@Test
+	void breaksTiesByIdSoPagesDoNotRepeatOrSkipRows() {
+		adapter.saveAll(List.of(professional(207L, 101L, "Ana", "Torres", true),
+				professional(205L, 101L, "Ana", "Torres", true), professional(206L, 101L, "Ana", "Torres", true)));
+		readFromDatabase();
+
+		PageResult<Professional> first = adapter.search(ProfessionalSearchCriteria.builder().build(), BY_LAST_NAME,
+				PageQuery.builder().page(0).size(2).build());
+		PageResult<Professional> second = adapter.search(ProfessionalSearchCriteria.builder().build(), BY_LAST_NAME,
+				PageQuery.builder().page(1).size(2).build());
+
+		assertThat(idsOf(first)).containsExactly(205L, 206L);
+		assertThat(idsOf(second)).containsExactly(207L);
+	}
+
+	@Test
+	void returnsAnEmptyPageWhenNothingMatches() {
+		storeForSearch();
+
+		PageResult<Professional> result = search(byName("zzz"));
+
+		assertThat(result.getContent()).isEmpty();
+		assertThat(result.getTotalElements()).isZero();
+	}
+
+	private void storeForSearch() {
+		adapter.saveAll(List.of(
+				professional(201L, 101L, "Ana", "Gómez", true),
+				professional(202L, 101L, "Martin", "Rivas", true),
+				professional(203L, 102L, "Lucía", "Paz", true),
+				professional(204L, 102L, "Nicolas", "Vega", true)));
+		readFromDatabase();
+	}
+
+	private PageResult<Professional> search(ProfessionalSearchCriteria criteria) {
+		return adapter.search(criteria, BY_LAST_NAME, FIRST_PAGE);
+	}
+
+	private ProfessionalSearchCriteria byName(String name) {
+		return ProfessionalSearchCriteria.builder().name(name).build();
+	}
+
+	private List<Long> idsOf(PageResult<Professional> page) {
+		return page.getContent().stream().map(Professional::getId).toList();
+	}
+
+	private static ProfessionalSortOrder sortBy(ProfessionalSortField field, boolean descending) {
+		return ProfessionalSortOrder.builder().field(field).descending(descending).build();
+	}
+
 	private Professional professional(Long id, Long categoryId, String firstName, boolean enabled) {
+		return professional(id, categoryId, firstName, "Torres", enabled);
+	}
+
+	private Professional professional(Long id, Long categoryId, String firstName, String lastName, boolean enabled) {
 		return Professional.builder()
 				.id(id)
 				.categoryId(categoryId)
 				.firstName(firstName)
-				.lastName("Torres")
+				.lastName(lastName)
 				.enabled(enabled)
 				.createdAt(CREATED_AT)
 				.updatedAt(UPDATED_AT)
