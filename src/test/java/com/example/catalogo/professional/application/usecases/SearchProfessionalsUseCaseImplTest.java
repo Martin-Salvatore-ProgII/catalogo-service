@@ -1,15 +1,24 @@
 package com.example.catalogo.professional.application.usecases;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import com.example.catalogo.category.domain.model.Category;
 import com.example.catalogo.category.domain.ports.out.CategoryRepository;
+import com.example.catalogo.professional.application.exception.DateOutOfRangeException;
+import com.example.catalogo.professional.domain.model.AvailabilityHorizon;
 import com.example.catalogo.professional.domain.model.PageQuery;
 import com.example.catalogo.professional.domain.model.PageResult;
 import com.example.catalogo.professional.domain.model.Professional;
@@ -18,10 +27,10 @@ import com.example.catalogo.professional.domain.model.ProfessionalSortField;
 import com.example.catalogo.professional.domain.model.ProfessionalSortOrder;
 import com.example.catalogo.professional.domain.model.ProfessionalSummary;
 import com.example.catalogo.professional.domain.ports.out.ProfessionalRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -36,8 +45,15 @@ class SearchProfessionalsUseCaseImplTest {
 	@Mock
 	private CategoryRepository categoryRepository;
 
-	@InjectMocks
 	private SearchProfessionalsUseCaseImpl useCase;
+
+	// En UTC ya es el 21 a la 1 de la mañana; en Argentina todavía es el martes 20 a las 22 (ADR-0016).
+	@BeforeEach
+	void createUseCase() {
+		Clock clock = Clock.fixed(Instant.parse("2026-10-21T01:00:00Z"), ZoneOffset.UTC);
+		useCase = new SearchProfessionalsUseCaseImpl(professionalRepository, categoryRepository,
+				AvailabilityHorizon.builder().days(60).build(), clock);
+	}
 
 	@Test
 	void ordersByLastNameAndFirstNameWhenNoOrderIsGiven() {
@@ -138,6 +154,55 @@ class SearchProfessionalsUseCaseImplTest {
 				ProfessionalSearchCriteria.builder().enabled(false).build(), List.of(), FIRST_PAGE);
 
 		assertThat(result.getContent()).extracting(ProfessionalSummary::isEnabled).containsExactly(true, false);
+	}
+
+	// --- Rango de la fecha (ADR-0065) ---
+
+	@Test
+	void acceptsTodayInArgentinaAlthoughItIsAlreadyTomorrowInUtc() {
+		returnsPage(List.of());
+
+		useCase.searchProfessionals(byDate("2026-10-20"), List.of(), FIRST_PAGE);
+
+		assertThat(capturedCriteria().getDate()).isEqualTo(LocalDate.parse("2026-10-20"));
+	}
+
+	@Test
+	void acceptsTheLastDayOfTheHorizon() {
+		returnsPage(List.of());
+
+		useCase.searchProfessionals(byDate("2026-12-19"), List.of(), FIRST_PAGE);
+
+		assertThat(capturedCriteria().getDate()).isEqualTo(LocalDate.parse("2026-12-19"));
+	}
+
+	@Test
+	void rejectsAPastDateWithoutSearching() {
+		assertThatThrownBy(() -> useCase.searchProfessionals(byDate("2026-10-19"), List.of(), FIRST_PAGE))
+				.isInstanceOf(DateOutOfRangeException.class);
+		verifyNoInteractions(professionalRepository);
+	}
+
+	@Test
+	void rejectsADateAfterTheHorizon() {
+		assertThatThrownBy(() -> useCase.searchProfessionals(byDate("2026-12-20"), List.of(), FIRST_PAGE))
+				.isInstanceOf(DateOutOfRangeException.class);
+	}
+
+	@Test
+	void passesTheTimeRangeAsItCame() {
+		returnsPage(List.of());
+		ProfessionalSearchCriteria criteria = byDate("2026-10-26").toBuilder()
+				.timeFrom(LocalTime.of(9, 0)).timeTo(LocalTime.of(12, 0)).build();
+
+		useCase.searchProfessionals(criteria, List.of(), FIRST_PAGE);
+
+		assertThat(capturedCriteria().getTimeFrom()).isEqualTo(LocalTime.of(9, 0));
+		assertThat(capturedCriteria().getTimeTo()).isEqualTo(LocalTime.of(12, 0));
+	}
+
+	private ProfessionalSearchCriteria byDate(String date) {
+		return ProfessionalSearchCriteria.builder().date(LocalDate.parse(date)).build();
 	}
 
 	private void returnsPage(List<Professional> professionals) {

@@ -1,5 +1,7 @@
 package com.example.catalogo.professional.domain.model;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Set;
 
 import lombok.AllArgsConstructor;
@@ -21,6 +23,10 @@ public class ProfessionalSearchCriteria {
 	// Habilitado efectivo (ADR-0014): true, solo los habilitados; false, solo los deshabilitados.
 	private Boolean enabled;
 	// Las categorías habilitadas, para resolver el habilitado efectivo. No las elige el usuario: las
-	// completa el caso de uso con el puerto de category (ADR-0062).
+	// completa el caso de uso con el puerto de category (ADR-0064).
 	private Set<Long> enabledCategoryIds;
+	// Disponibilidad de agenda (ADR-0013): una fecha y, opcionalmente, una franja con sus dos extremos.
+	private LocalDate date;
+	private LocalTime timeFrom;
+	private LocalTime timeTo;
 }

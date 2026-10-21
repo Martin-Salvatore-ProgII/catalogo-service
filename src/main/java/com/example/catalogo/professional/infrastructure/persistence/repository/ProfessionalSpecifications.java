@@ -1,8 +1,14 @@
 package com.example.catalogo.professional.infrastructure.persistence.repository;
 
+import java.time.DayOfWeek;
+import java.time.LocalTime;
 import java.util.Set;
 
 import com.example.catalogo.professional.infrastructure.persistence.entity.ProfessionalEntity;
+import com.example.catalogo.professional.infrastructure.persistence.entity.WeeklyScheduleEntity;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import org.springframework.data.jpa.domain.Specification;
@@ -29,6 +35,26 @@ public final class ProfessionalSpecifications {
 		return (root, query, cb) -> enabledCategoryIds.isEmpty()
 				? cb.disjunction()
 				: cb.and(cb.isTrue(root.get("enabled")), root.get("categoryId").in(enabledCategoryIds));
+	}
+
+	// Disponibilidad de agenda (ADR-0013): existe un horario habilitado de ese día que comparte al
+	// menos un minuto con la franja (empieza antes de que ella termine y termina después de que
+	// empiece). Los horarios son de la misma feature, así que se consultan acá (ADR-0064).
+	public static Specification<ProfessionalEntity> hasScheduleOn(DayOfWeek day, LocalTime from, LocalTime to) {
+		return (root, query, cb) -> {
+			Subquery<Long> schedules = query.subquery(Long.class);
+			Root<WeeklyScheduleEntity> schedule = schedules.from(WeeklyScheduleEntity.class);
+			Predicate matches = cb.and(
+					cb.equal(schedule.get("professionalId"), root.get("id")),
+					cb.isTrue(schedule.get("enabled")),
+					cb.equal(schedule.get("dayOfWeek"), day));
+			if (from != null && to != null) {
+				matches = cb.and(matches,
+						cb.lessThan(schedule.<LocalTime>get("startTime"), to),
+						cb.greaterThan(schedule.<LocalTime>get("endTime"), from));
+			}
+			return cb.exists(schedules.select(schedule.get("id")).where(matches));
+		};
 	}
 
 	// Coincidencia parcial sobre "nombre apellido", sin mayúsculas ni tildes, como pide el puerto.

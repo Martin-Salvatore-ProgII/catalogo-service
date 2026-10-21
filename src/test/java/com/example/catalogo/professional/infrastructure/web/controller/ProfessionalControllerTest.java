@@ -11,9 +11,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 import com.example.catalogo.category.domain.model.Category;
+import com.example.catalogo.professional.application.exception.DateOutOfRangeException;
 import com.example.catalogo.professional.application.service.ProfessionalService;
 import com.example.catalogo.professional.domain.model.PageQuery;
 import com.example.catalogo.professional.domain.model.PageResult;
@@ -110,6 +113,27 @@ class ProfessionalControllerTest {
 		assertThat(sort).extracting(ProfessionalSortOrder::isDescending).containsExactly(true, false);
 	}
 
+	@Test
+	void passesTheDateAndTheTimeRangeInBothFormats() throws Exception {
+		mockMvc.perform(get(PROFESSIONALS).param("date", "2026-10-26").param("timeFrom", "09:00")
+				.param("timeTo", "12:30:00"))
+				.andExpect(status().isOk());
+
+		assertThat(capturedCriteria().getDate()).isEqualTo(LocalDate.parse("2026-10-26"));
+		assertThat(capturedCriteria().getTimeFrom()).isEqualTo(LocalTime.of(9, 0));
+		assertThat(capturedCriteria().getTimeTo()).isEqualTo(LocalTime.of(12, 30));
+	}
+
+	@Test
+	void answersDateOutOfRangeWhenTheUseCaseRejectsTheDate() throws Exception {
+		when(professionalService.searchProfessionals(any(), any(), any())).thenThrow(new DateOutOfRangeException(
+				LocalDate.parse("2026-01-01"), LocalDate.parse("2026-10-20"), LocalDate.parse("2026-12-19")));
+
+		mockMvc.perform(get(PROFESSIONALS).param("date", "2026-01-01"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("DATE_OUT_OF_RANGE"));
+	}
+
 	// --- La respuesta ---
 
 	@Test
@@ -154,6 +178,8 @@ class ProfessionalControllerTest {
 			"size, 101",
 			"categoryId, abc",
 			"enabled, maybe",
+			"date, 26/10/2026",
+			"timeFrom, 9am",
 			"sort, email",
 			"sort, 'lastName,sideways'",
 			"sort, 'desc'",
@@ -163,6 +189,23 @@ class ProfessionalControllerTest {
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
 				.andExpect(jsonPath("$.fieldErrors[0].field").value(org.hamcrest.Matchers.startsWith(parameter)));
+		verifyNoInteractions(professionalService);
+	}
+
+	// Las reglas de la franja (ADR-0065): cada una con su nombre en fieldErrors.
+	@ParameterizedTest(name = "{0}")
+	@CsvSource(delimiter = '|', value = {
+			"timeRangeComplete | date=2026-10-26&timeFrom=09:00",
+			"timeRangeComplete | date=2026-10-26&timeTo=12:00",
+			"timeRangeWithDate | timeFrom=09:00&timeTo=12:00",
+			"timeRangeOrdered  | date=2026-10-26&timeFrom=12:00&timeTo=09:00",
+			"timeRangeOrdered  | date=2026-10-26&timeFrom=09:00&timeTo=09:00",
+	})
+	void rejectsAnInvalidTimeRange(String rule, String query) throws Exception {
+		mockMvc.perform(get(PROFESSIONALS + "?" + query))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+				.andExpect(jsonPath("$.fieldErrors[*].field", org.hamcrest.Matchers.hasItem(rule)));
 		verifyNoInteractions(professionalService);
 	}
 

@@ -31,6 +31,10 @@ catalogo:
     # cambiar con CATALOGO_PAGINATION_DEFAULT_SIZE y CATALOGO_PAGINATION_MAX_SIZE.
     default-size: 20
     max-size: 100
+  availability:
+    # Cuántos días hacia adelante acepta el filtro de disponibilidad (ADR-0015, ADR-0065, RNF-09). Tiene
+    # que valer lo mismo que en turnos. Se puede cambiar con CATALOGO_AVAILABILITY_HORIZON_DAYS.
+    horizon-days: 60
   security:
     jwt:
       # Ubicación de la clave pública RSA con la que se valida el JWT de usuario que emite el

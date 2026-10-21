@@ -12,7 +12,7 @@ public interface CategoryRepository {
 	List<Category> findAllEnabledOrderedByName();
 
 	// Todas, habilitadas o no. La usa la búsqueda de profesionales para completar la categoría de
-	// cada resultado (ADR-0062).
+	// cada resultado (ADR-0064).
 	List<Category> findAll();
 
 	// Guarda por el id de la cátedra: crea las que no están y reemplaza las que ya están. La usa

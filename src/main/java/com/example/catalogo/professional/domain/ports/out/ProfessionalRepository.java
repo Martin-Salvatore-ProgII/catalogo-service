@@ -17,6 +17,8 @@ public interface ProfessionalRepository {
 	// la base, que pagina y cuenta sin traer todas las filas a memoria.
 	// El filtro enabled es el habilitado efectivo de ADR-0014, igual que Professional.isEffectivelyEnabled:
 	// habilitado es enabled propio en true y la categoría entre criteria.enabledCategoryIds.
+	// La fecha es disponibilidad de agenda (ADR-0013): algún horario habilitado el día de la semana de
+	// esa fecha y, si hay franja, que comparta al menos un minuto con ella (tocarse en el borde no alcanza).
 	PageResult<Professional> search(ProfessionalSearchCriteria criteria, List<ProfessionalSortOrder> sort,
 			PageQuery page);
 

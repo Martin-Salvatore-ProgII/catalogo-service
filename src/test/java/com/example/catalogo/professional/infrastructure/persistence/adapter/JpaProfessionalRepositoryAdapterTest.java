@@ -3,6 +3,8 @@ package com.example.catalogo.professional.infrastructure.persistence.adapter;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Set;
 
@@ -255,6 +257,77 @@ class JpaProfessionalRepositoryAdapterTest {
 
 	private ProfessionalSearchCriteria byEnabled(boolean enabled, Set<Long> enabledCategoryIds) {
 		return ProfessionalSearchCriteria.builder().enabled(enabled).enabledCategoryIds(enabledCategoryIds).build();
+	}
+
+	// --- Disponibilidad de agenda (ADR-0013). El 2026-10-26 es lunes ---
+
+	private static final LocalDate MONDAY = LocalDate.parse("2026-10-26");
+
+	@Test
+	void dateReturnsProfessionalsWithAnEnabledScheduleThatDayOfTheWeek() {
+		storeForAvailability();
+
+		// Paz atiende los martes; Vega, los lunes, pero ese horario está deshabilitado (ADR-0014).
+		assertThat(idsOf(search(byAvailability(MONDAY, null, null)))).containsExactly(201L, 202L);
+	}
+
+	@Test
+	void aProfessionalWithSeveralSchedulesThatDayAppearsOnce() {
+		storeForAvailability();
+
+		PageResult<Professional> result = search(byAvailability(MONDAY, null, null));
+
+		assertThat(result.getTotalElements()).isEqualTo(2);
+	}
+
+	@Test
+	void timeRangeReturnsSchedulesThatShareAtLeastAMinuteWithIt() {
+		storeForAvailability();
+
+		// Gómez atiende de 09 a 12 y de 15 a 16; Rivas, de 14 a 18.
+		assertThat(idsOf(search(byAvailability(MONDAY, "11:00", "13:00")))).containsExactly(201L);
+		assertThat(idsOf(search(byAvailability(MONDAY, "10:00", "10:30")))).containsExactly(201L);
+		assertThat(idsOf(search(byAvailability(MONDAY, "08:00", "20:00")))).containsExactly(201L, 202L);
+		assertThat(idsOf(search(byAvailability(MONDAY, "15:30", "17:00")))).containsExactly(201L, 202L);
+	}
+
+	@Test
+	void schedulesThatOnlyTouchTheBorderOfTheRangeDoNotCount() {
+		storeForAvailability();
+
+		// De 12 a 14 no queda ningún minuto: Gómez termina a las 12 y Rivas empieza a las 14.
+		assertThat(search(byAvailability(MONDAY, "12:00", "14:00")).getContent()).isEmpty();
+	}
+
+	@Test
+	void combinesAvailabilityWithTheOtherFilters() {
+		storeForAvailability();
+
+		ProfessionalSearchCriteria criteria = byAvailability(MONDAY, "08:00", "20:00").toBuilder()
+				.name("rivas").enabled(true).enabledCategoryIds(Set.of(101L, 102L)).build();
+		assertThat(idsOf(search(criteria))).containsExactly(202L);
+	}
+
+	private void storeForAvailability() {
+		storeForSearch();
+		entityManager.getEntityManager().createNativeQuery("""
+				INSERT INTO weekly_schedule (id, professional_id, day_of_week, start_time, end_time,
+					slot_duration_minutes, enabled, created_at, updated_at)
+				VALUES (301, 201, 'MONDAY', '09:00', '12:00', 30, true, now(), now()),
+					(302, 201, 'MONDAY', '15:00', '16:00', 20, true, now(), now()),
+					(303, 202, 'MONDAY', '14:00', '18:00', 45, true, now(), now()),
+					(304, 203, 'TUESDAY', '09:00', '12:00', 30, true, now(), now()),
+					(305, 204, 'MONDAY', '09:00', '12:00', 30, false, now(), now())
+				""").executeUpdate();
+		readFromDatabase();
+	}
+
+	private ProfessionalSearchCriteria byAvailability(LocalDate date, String from, String to) {
+		return ProfessionalSearchCriteria.builder()
+				.date(date)
+				.timeFrom(from != null ? LocalTime.parse(from) : null)
+				.timeTo(to != null ? LocalTime.parse(to) : null)
+				.build();
 	}
 
 	private void storeForSearch() {

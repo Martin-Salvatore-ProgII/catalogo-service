@@ -10,12 +10,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.security.KeyPair;
 import java.time.Duration;
+import java.time.DayOfWeek;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
 
 import com.example.catalogo.CatalogTables;
 import com.example.catalogo.TestCatedraConfiguration;
 import com.example.catalogo.TestJwtKeysConfiguration;
 import com.example.catalogo.TestcontainersConfiguration;
+import com.example.catalogo.professional.domain.model.AgendaZone;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -129,6 +133,33 @@ class ProfessionalSearchAccessTest {
 				// Vega está habilitado, pero su categoría no (ADR-0014).
 				.andExpect(jsonPath("$[1].lastName").value("Vega"))
 				.andExpect(jsonPath("$[1].enabled").value(false));
+	}
+
+	@Test
+	void filtersByAvailabilityOfTheAgenda() throws Exception {
+		jdbcClient.sql("""
+				INSERT INTO weekly_schedule (id, professional_id, day_of_week, start_time, end_time,
+					slot_duration_minutes, enabled, created_at, updated_at)
+				VALUES (301, 201, 'MONDAY', '09:00', '12:00', 30, true, now(), now()),
+					(302, 202, 'MONDAY', '14:00', '18:00', 30, true, now(), now())
+				""").update();
+		// El próximo lunes, siempre dentro del horizonte.
+		LocalDate monday = LocalDate.now(AgendaZone.ZONE).with(TemporalAdjusters.next(DayOfWeek.MONDAY));
+
+		mockMvc.perform(get(PROFESSIONALS).param("date", monday.toString()).param("timeFrom", "10:00")
+				.param("timeTo", "11:00").header(HttpHeaders.AUTHORIZATION, bearer()))
+				.andExpect(status().isOk())
+				.andExpect(header().string("X-Total-Count", "1"))
+				.andExpect(jsonPath("$[0].lastName").value("Gómez"));
+	}
+
+	@Test
+	void rejectsAPastDate() throws Exception {
+		LocalDate yesterday = LocalDate.now(AgendaZone.ZONE).minusDays(1);
+
+		mockMvc.perform(get(PROFESSIONALS).param("date", yesterday.toString()).header(HttpHeaders.AUTHORIZATION, bearer()))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("DATE_OUT_OF_RANGE"));
 	}
 
 	@Test
