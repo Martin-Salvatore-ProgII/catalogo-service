@@ -43,6 +43,10 @@ public class JpaProfessionalRepositoryAdapter implements ProfessionalRepository 
 					ProfessionalSpecifications.effectivelyEnabled(criteria.getEnabledCategoryIds());
 			specification = specification.and(criteria.getEnabled() ? enabled : Specification.not(enabled));
 		}
+		if (criteria.getDate() != null) {
+			specification = specification.and(ProfessionalSpecifications.hasScheduleOn(
+					criteria.getDate().getDayOfWeek(), criteria.getTimeFrom(), criteria.getTimeTo()));
+		}
 
 		// Spring Data hace dos consultas: la página y el total que cumple los filtros.
 		Page<ProfessionalEntity> result = jpaProfessionalRepository.findAll(

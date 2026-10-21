@@ -2,6 +2,7 @@ package com.example.catalogo.shared.infrastructure.web.advice;
 
 import java.util.List;
 
+import com.example.catalogo.professional.application.exception.DateOutOfRangeException;
 import com.example.catalogo.sync.application.exception.CatalogNotReadyException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -27,6 +28,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
 	private static final String VALIDATION_ERROR = "VALIDATION_ERROR";
 	private static final String CATALOG_NOT_READY = "CATALOG_NOT_READY";
+	private static final String DATE_OUT_OF_RANGE = "DATE_OUT_OF_RANGE";
 
 	@Override
 	protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
@@ -50,6 +52,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
 		problem.setProperty("code", CATALOG_NOT_READY);
 		return handleExceptionInternal(ex, problem, new HttpHeaders(), HttpStatus.SERVICE_UNAVAILABLE, request);
+	}
+
+	// Fecha del filtro de disponibilidad fuera de rango (ADR-0065): el mismo código que usa turnos.
+	@ExceptionHandler(DateOutOfRangeException.class)
+	public ResponseEntity<Object> handleDateOutOfRange(DateOutOfRangeException ex, WebRequest request) {
+		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+		problem.setProperty("code", DATE_OUT_OF_RANGE);
+		return handleExceptionInternal(ex, problem, new HttpHeaders(), HttpStatus.BAD_REQUEST, request);
 	}
 
 	@ExceptionHandler(Exception.class)

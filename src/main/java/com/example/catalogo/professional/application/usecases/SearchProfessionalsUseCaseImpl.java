@@ -1,5 +1,7 @@
 package com.example.catalogo.professional.application.usecases;
 
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -8,6 +10,9 @@ import java.util.stream.Collectors;
 
 import com.example.catalogo.category.domain.model.Category;
 import com.example.catalogo.category.domain.ports.out.CategoryRepository;
+import com.example.catalogo.professional.application.exception.DateOutOfRangeException;
+import com.example.catalogo.professional.domain.model.AgendaZone;
+import com.example.catalogo.professional.domain.model.AvailabilityHorizon;
 import com.example.catalogo.professional.domain.model.PageQuery;
 import com.example.catalogo.professional.domain.model.PageResult;
 import com.example.catalogo.professional.domain.model.Professional;
@@ -33,6 +38,8 @@ public class SearchProfessionalsUseCaseImpl implements SearchProfessionalsUseCas
 
 	private final ProfessionalRepository professionalRepository;
 	private final CategoryRepository categoryRepository;
+	private final AvailabilityHorizon availabilityHorizon;
+	private final Clock clock;
 
 	// Se responde con la copia local, sin consultar a la cátedra (ENUNCIADO §6.2). Son varias
 	// lecturas (la página, el total y las categorías): con REPEATABLE READ todas ven la misma
@@ -41,7 +48,9 @@ public class SearchProfessionalsUseCaseImpl implements SearchProfessionalsUseCas
 	@Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
 	public PageResult<ProfessionalSummary> searchProfessionals(ProfessionalSearchCriteria criteria,
 			List<ProfessionalSortOrder> sort, PageQuery page) {
-		// La categoría es de otra feature: se lee con su puerto de salida (ADR-0062) y no con un JOIN
+		checkDateInRange(criteria.getDate());
+
+		// La categoría es de otra feature: se lee con su puerto de salida (ADR-0064) y no con un JOIN
 		// a su tabla. Son pocas, y sirven para el filtro de habilitado y para completar cada resultado.
 		Map<Long, Category> categories = categoryRepository.findAll().stream()
 				.collect(Collectors.toMap(Category::getId, Function.identity()));
@@ -59,6 +68,19 @@ public class SearchProfessionalsUseCaseImpl implements SearchProfessionalsUseCas
 		PageResult<Professional> professionals = professionalRepository.search(
 				normalized, sort.isEmpty() ? DEFAULT_SORT : sort, page);
 		return professionals.map(professional -> toSummary(professional, categories.get(professional.getCategoryId())));
+	}
+
+	// Solo fechas entre hoy y el horizonte (ADR-0065), las mismas que acepta la disponibilidad de
+	// turnos. "Hoy" es el de Argentina (ADR-0016): a las 22 h del día 10 en UTC ya es 11, pero acá no.
+	private void checkDateInRange(LocalDate date) {
+		if (date == null) {
+			return;
+		}
+		LocalDate today = LocalDate.now(clock.withZone(AgendaZone.ZONE));
+		LocalDate last = today.plusDays(availabilityHorizon.getDays());
+		if (date.isBefore(today) || date.isAfter(last)) {
+			throw new DateOutOfRangeException(date, today, last);
+		}
 	}
 
 	// Los espacios de más no cambian lo que se busca: "  ana   gom " es lo mismo que "ana gom".
