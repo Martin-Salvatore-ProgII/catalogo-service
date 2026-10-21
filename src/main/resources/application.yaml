@@ -5,3 +5,41 @@ spring:
     url: ${DB_URL}
     username: ${DB_USER}
     password: ${DB_PASSWORD}
+  jpa:
+    # El esquema lo define Flyway. Hibernate solo verifica que las entities coincidan con las tablas.
+    hibernate:
+      ddl-auto: validate
+    # La sesión de base se cierra al terminar el caso de uso, no al terminar la respuesta HTTP.
+    open-in-view: false
+
+catalogo:
+  catedra:
+    # URL base de la API de la cátedra y JWT técnico, desde el .env (ADR-0005). Redis y Kafka no se
+    # configuran acá: se piden a la cátedra al arrancar.
+    api-url: ${CATEDRA_API_URL}
+    technical-token: ${CATEDRA_TECHNICAL_TOKEN}
+    # Timeouts hacia la cátedra (ADR-0029, RNF-09). Se pueden cambiar con las variables
+    # CATALOGO_CATEDRA_CONNECT_TIMEOUT y CATALOGO_CATEDRA_READ_TIMEOUT.
+    connect-timeout: 2s
+    read-timeout: 5s
+  sync:
+    # Intervalo del chequeo periódico de sincronización (ADR-0006, RNF-09). Se puede cambiar con
+    # la variable CATALOGO_SYNC_CHECK_INTERVAL.
+    check-interval: 5m
+  pagination:
+    # Tamaño de página por defecto y máximo de las listas (docs/arq/contratos.md, RNF-09). Se pueden
+    # cambiar con CATALOGO_PAGINATION_DEFAULT_SIZE y CATALOGO_PAGINATION_MAX_SIZE.
+    default-size: 20
+    max-size: 100
+  availability:
+    # Cuántos días hacia adelante acepta el filtro de disponibilidad (ADR-0015, ADR-0065, RNF-09). Tiene
+    # que valer lo mismo que en turnos. Se puede cambiar con CATALOGO_AVAILABILITY_HORIZON_DAYS.
+    horizon-days: 60
+  security:
+    jwt:
+      # Ubicación de la clave pública RSA con la que se valida el JWT de usuario que emite el
+      # servicio de turnos (ADR-0032).
+      public-key-location: ${JWT_PUBLIC_KEY_LOCATION}
+    cors:
+      # Orígenes web que pueden llamar a la API desde un navegador. Vacío: ninguno (ADR-0036).
+      allowed-origins: []

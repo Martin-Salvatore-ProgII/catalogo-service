@@ -2,7 +2,11 @@ package com.example.catalogo.shared.infrastructure.web.advice;
 
 import java.util.List;
 
+import com.example.catalogo.professional.application.exception.DateOutOfRangeException;
+import com.example.catalogo.professional.application.exception.ProfessionalNotFoundException;
+import com.example.catalogo.sync.application.exception.CatalogNotReadyException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.TypeMismatchException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -25,6 +29,9 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
 	private static final String VALIDATION_ERROR = "VALIDATION_ERROR";
+	private static final String CATALOG_NOT_READY = "CATALOG_NOT_READY";
+	private static final String DATE_OUT_OF_RANGE = "DATE_OUT_OF_RANGE";
+	private static final String PROFESSIONAL_NOT_FOUND = "PROFESSIONAL_NOT_FOUND";
 
 	@Override
 	protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
@@ -42,6 +49,30 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		return handleExceptionInternal(ex, problem, headers, status, request);
 	}
 
+	// Mientras no haya versión local no hay copia con la que responder (docs/arq/contratos.md).
+	@ExceptionHandler(CatalogNotReadyException.class)
+	public ResponseEntity<Object> handleCatalogNotReady(CatalogNotReadyException ex, WebRequest request) {
+		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+		problem.setProperty("code", CATALOG_NOT_READY);
+		return handleExceptionInternal(ex, problem, new HttpHeaders(), HttpStatus.SERVICE_UNAVAILABLE, request);
+	}
+
+	// Fecha del filtro de disponibilidad fuera de rango (ADR-0065): el mismo código que usa turnos.
+	@ExceptionHandler(DateOutOfRangeException.class)
+	public ResponseEntity<Object> handleDateOutOfRange(DateOutOfRangeException ex, WebRequest request) {
+		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+		problem.setProperty("code", DATE_OUT_OF_RANGE);
+		return handleExceptionInternal(ex, problem, new HttpHeaders(), HttpStatus.BAD_REQUEST, request);
+	}
+
+	// Mismo código que la cátedra (REF §13.1): turnos lo trata igual venga de donde venga.
+	@ExceptionHandler(ProfessionalNotFoundException.class)
+	public ResponseEntity<Object> handleProfessionalNotFound(ProfessionalNotFoundException ex, WebRequest request) {
+		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+		problem.setProperty("code", PROFESSIONAL_NOT_FOUND);
+		return handleExceptionInternal(ex, problem, new HttpHeaders(), HttpStatus.NOT_FOUND, request);
+	}
+
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<Object> handleUnexpected(Exception ex, WebRequest request) {
 		// El detalle real queda en el log; al cliente no se le muestran datos internos.
@@ -50,14 +81,35 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		return handleExceptionInternal(ex, problem, new HttpHeaders(), HttpStatus.INTERNAL_SERVER_ERROR, request);
 	}
 
+	// Un parámetro con un tipo que no corresponde ("abc" donde va un número): se informa qué campo es,
+	// como en cualquier error de validación.
+	@Override
+	protected ResponseEntity<Object> handleTypeMismatch(TypeMismatchException ex, HttpHeaders headers,
+			HttpStatusCode status, WebRequest request) {
+		String field = ex.getPropertyName();
+		ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, "Invalid value for " + field);
+		problem.setProperty("fieldErrors", List.of(FieldErrorResponse.builder()
+				.field(field)
+				.message("has an invalid format")
+				.build()));
+		return handleExceptionInternal(ex, problem, headers, status, request);
+	}
+
 	// Todos los errores pasan por acá: es el lugar para agregar el path a cada respuesta.
 	@Override
 	protected ResponseEntity<Object> handleExceptionInternal(Exception ex, Object body, HttpHeaders headers,
 			HttpStatusCode statusCode, WebRequest request) {
 		ResponseEntity<Object> response = super.handleExceptionInternal(ex, body, headers, statusCode, request);
-		if (response != null && response.getBody() instanceof ProblemDetail problem
-				&& request instanceof ServletWebRequest servletRequest) {
-			problem.setProperty("path", servletRequest.getRequest().getRequestURI());
+		if (response != null && response.getBody() instanceof ProblemDetail problem) {
+			if (request instanceof ServletWebRequest servletRequest) {
+				problem.setProperty("path", servletRequest.getRequest().getRequestURI());
+			}
+			// Un 400 sin código propio lo arma Spring (JSON mal formado, tipo inválido, parámetro que
+			// falta): para el contrato es un VALIDATION_ERROR, y así ningún 400 llega sin code.
+			boolean withoutCode = problem.getProperties() == null || !problem.getProperties().containsKey("code");
+			if (statusCode.value() == HttpStatus.BAD_REQUEST.value() && withoutCode) {
+				problem.setProperty("code", VALIDATION_ERROR);
+			}
 		}
 		return response;
 	}
