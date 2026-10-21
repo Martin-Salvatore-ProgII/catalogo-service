@@ -23,6 +23,13 @@ public class JpaCategoryRepositoryAdapter implements CategoryRepository {
 				.toList();
 	}
 
+	@Override
+	public List<Category> findAll() {
+		return jpaCategoryRepository.findAll().stream()
+				.map(categoryMapper::toDomainModel)
+				.toList();
+	}
+
 	// Con el id ya asignado, Spring Data busca la fila por id y la actualiza, o la crea si no está.
 	@Override
 	public void saveAll(List<Category> categories) {

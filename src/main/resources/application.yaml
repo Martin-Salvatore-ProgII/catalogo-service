@@ -26,6 +26,11 @@ catalogo:
     # Intervalo del chequeo periódico de sincronización (ADR-0006, RNF-09). Se puede cambiar con
     # la variable CATALOGO_SYNC_CHECK_INTERVAL.
     check-interval: 5m
+  pagination:
+    # Tamaño de página por defecto y máximo de las listas (docs/arq/contratos.md, RNF-09). Se pueden
+    # cambiar con CATALOGO_PAGINATION_DEFAULT_SIZE y CATALOGO_PAGINATION_MAX_SIZE.
+    default-size: 20
+    max-size: 100
   security:
     jwt:
       # Ubicación de la clave pública RSA con la que se valida el JWT de usuario que emite el

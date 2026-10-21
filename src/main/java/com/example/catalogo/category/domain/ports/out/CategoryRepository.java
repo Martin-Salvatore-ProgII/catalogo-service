@@ -11,6 +11,10 @@ public interface CategoryRepository {
 	// en memoria, es para traer únicamente las filas que se van a usar.
 	List<Category> findAllEnabledOrderedByName();
 
+	// Todas, habilitadas o no. La usa la búsqueda de profesionales para completar la categoría de
+	// cada resultado (ADR-0062).
+	List<Category> findAll();
+
 	// Guarda por el id de la cátedra: crea las que no están y reemplaza las que ya están. La usa
 	// la sincronización para escribir la copia local (ADR-0062).
 	void saveAll(List<Category> categories);
