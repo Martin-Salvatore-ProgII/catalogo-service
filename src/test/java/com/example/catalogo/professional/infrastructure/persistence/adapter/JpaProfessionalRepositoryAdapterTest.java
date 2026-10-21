@@ -110,6 +110,17 @@ class JpaProfessionalRepositoryAdapterTest {
 		assertThat(jpaProfessionalRepository.findById(201L).orElseThrow().isEnabled()).isFalse();
 	}
 
+	@Test
+	void findsAProfessionalById() {
+		adapter.saveAll(List.of(professional(201L, 101L, "Ana", "Gómez", false)));
+		readFromDatabase();
+
+		Professional found = adapter.findById(201L).orElseThrow();
+		assertThat(found.getLastName()).isEqualTo("Gómez");
+		assertThat(found.isEnabled()).isFalse();
+		assertThat(adapter.findById(999L)).isEmpty();
+	}
+
 	// --- Búsqueda ---
 
 	@Test

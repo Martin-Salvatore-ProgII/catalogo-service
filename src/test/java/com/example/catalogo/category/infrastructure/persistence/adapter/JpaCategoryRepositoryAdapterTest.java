@@ -45,6 +45,14 @@ class JpaCategoryRepositoryAdapterTest {
 	}
 
 	@Test
+	void findsACategoryByIdEvenIfItIsDisabled() {
+		store(108L, "Salud mental", false);
+
+		assertThat(adapter.findById(108L)).get().extracting(Category::getName).isEqualTo("Salud mental");
+		assertThat(adapter.findById(999L)).isEmpty();
+	}
+
+	@Test
 	void findAllReturnsEnabledAndDisabledCategories() {
 		store(101L, "Cardiologia", true);
 		store(108L, "Salud mental", false);

@@ -1,6 +1,7 @@
 package com.example.catalogo.category.domain.ports.out;
 
 import java.util.List;
+import java.util.Optional;
 
 import com.example.catalogo.category.domain.model.Category;
 
@@ -10,6 +11,9 @@ public interface CategoryRepository {
 	// esta operación y el adaptador solo la ejecuta. Que la resuelva la base, y no el caso de uso
 	// en memoria, es para traer únicamente las filas que se van a usar.
 	List<Category> findAllEnabledOrderedByName();
+
+	// La usa la agenda de un profesional para devolver su categoría (ADR-0064).
+	Optional<Category> findById(Long id);
 
 	// Todas, habilitadas o no. La usa la búsqueda de profesionales para completar la categoría de
 	// cada resultado (ADR-0064).
