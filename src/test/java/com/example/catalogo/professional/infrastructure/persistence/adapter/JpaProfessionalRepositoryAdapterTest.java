@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 
 import com.example.catalogo.TestcontainersConfiguration;
 import com.example.catalogo.professional.domain.model.PageQuery;
@@ -50,7 +51,8 @@ class JpaProfessionalRepositoryAdapterTest {
 	void storeCategories() {
 		entityManager.getEntityManager().createNativeQuery("""
 				INSERT INTO professional_category (id, name, enabled, created_at, updated_at)
-				VALUES (101, 'Cardiologia', true, now(), now()), (102, 'Pediatria', true, now(), now())
+				VALUES (101, 'Cardiologia', true, now(), now()), (102, 'Pediatria', true, now(), now()),
+					(103, 'Dermatologia', false, now(), now())
 				""").executeUpdate();
 	}
 
@@ -208,6 +210,51 @@ class JpaProfessionalRepositoryAdapterTest {
 
 		assertThat(result.getContent()).isEmpty();
 		assertThat(result.getTotalElements()).isZero();
+	}
+
+	// --- Habilitado efectivo (ADR-0014) ---
+
+	@Test
+	void enabledReturnsOnlyProfessionalsEnabledInAnEnabledCategory() {
+		storeForEnabledFilter();
+
+		assertThat(idsOf(search(byEnabled(true, Set.of(101L, 102L))))).containsExactly(201L);
+	}
+
+	@Test
+	void disabledReturnsTheDisabledOnesAndThoseOfADisabledCategory() {
+		storeForEnabledFilter();
+
+		// Torres está deshabilitado; Vega está habilitado, pero su categoría no.
+		assertThat(idsOf(search(byEnabled(false, Set.of(101L, 102L))))).containsExactly(202L, 203L);
+	}
+
+	@Test
+	void withoutEnabledCategoriesNoProfessionalIsEnabled() {
+		storeForEnabledFilter();
+
+		assertThat(search(byEnabled(true, Set.of())).getContent()).isEmpty();
+		assertThat(idsOf(search(byEnabled(false, Set.of())))).containsExactly(201L, 202L, 203L);
+	}
+
+	@Test
+	void combinesTheEnabledFilterWithTheName() {
+		storeForEnabledFilter();
+
+		ProfessionalSearchCriteria criteria = byEnabled(false, Set.of(101L, 102L)).toBuilder().name("vega").build();
+		assertThat(idsOf(search(criteria))).containsExactly(203L);
+	}
+
+	private void storeForEnabledFilter() {
+		adapter.saveAll(List.of(
+				professional(201L, 101L, "Ana", "Gómez", true),
+				professional(202L, 101L, "Bruno", "Torres", false),
+				professional(203L, 103L, "Nicolas", "Vega", true)));
+		readFromDatabase();
+	}
+
+	private ProfessionalSearchCriteria byEnabled(boolean enabled, Set<Long> enabledCategoryIds) {
+		return ProfessionalSearchCriteria.builder().enabled(enabled).enabledCategoryIds(enabledCategoryIds).build();
 	}
 
 	private void storeForSearch() {

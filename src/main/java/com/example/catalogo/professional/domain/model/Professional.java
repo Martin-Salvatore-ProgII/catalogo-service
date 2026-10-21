@@ -2,6 +2,7 @@ package com.example.catalogo.professional.domain.model;
 
 import java.time.Instant;
 
+import com.example.catalogo.category.domain.model.Category;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -23,4 +24,11 @@ public class Professional {
 	private boolean enabled;
 	private Instant createdAt;
 	private Instant updatedAt;
+
+	// Habilitado efectivo (ADR-0014): solo si él y su categoría lo están. Está en el modelo porque la
+	// usan la búsqueda y la agenda, y así la regla queda escrita una sola vez. Sin categoría
+	// conocida no se lo ofrece: es preferible ocultarlo a ofrecer algo que la cátedra rechace.
+	public boolean isEffectivelyEnabled(Category category) {
+		return enabled && category != null && category.isEnabled();
+	}
 }

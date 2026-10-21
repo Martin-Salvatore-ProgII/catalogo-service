@@ -30,6 +30,7 @@ public class ProfessionalDtoMapper {
 		return ProfessionalSearchCriteria.builder()
 				.categoryId(request.getCategoryId())
 				.name(request.getName())
+				.enabled(request.getEnabled())
 				.build();
 	}
 
@@ -71,6 +72,7 @@ public class ProfessionalDtoMapper {
 				.firstName(professional.getFirstName())
 				.lastName(professional.getLastName())
 				.category(toCategoryRef(professional.getCategory()))
+				.enabled(professional.isEnabled())
 				.build();
 	}
 

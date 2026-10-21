@@ -2,6 +2,7 @@ package com.example.catalogo.professional.application.usecases;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -40,14 +41,23 @@ public class SearchProfessionalsUseCaseImpl implements SearchProfessionalsUseCas
 	@Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
 	public PageResult<ProfessionalSummary> searchProfessionals(ProfessionalSearchCriteria criteria,
 			List<ProfessionalSortOrder> sort, PageQuery page) {
-		ProfessionalSearchCriteria normalized = criteria.toBuilder().name(normalizeName(criteria.getName())).build();
-		PageResult<Professional> professionals = professionalRepository.search(
-				normalized, sort.isEmpty() ? DEFAULT_SORT : sort, page);
-
 		// La categoría es de otra feature: se lee con su puerto de salida (ADR-0062) y no con un JOIN
-		// a su tabla. Son pocas, y así cada resultado sale con su nombre en una sola consulta más.
+		// a su tabla. Son pocas, y sirven para el filtro de habilitado y para completar cada resultado.
 		Map<Long, Category> categories = categoryRepository.findAll().stream()
 				.collect(Collectors.toMap(Category::getId, Function.identity()));
+		Set<Long> enabledCategoryIds = categories.values().stream()
+				.filter(Category::isEnabled)
+				.map(Category::getId)
+				.collect(Collectors.toSet());
+
+		ProfessionalSearchCriteria normalized = criteria.toBuilder()
+				.name(normalizeName(criteria.getName()))
+				// Sin pedir el estado, solo los habilitados (ADR-0014).
+				.enabled(criteria.getEnabled() != null ? criteria.getEnabled() : Boolean.TRUE)
+				.enabledCategoryIds(enabledCategoryIds)
+				.build();
+		PageResult<Professional> professionals = professionalRepository.search(
+				normalized, sort.isEmpty() ? DEFAULT_SORT : sort, page);
 		return professionals.map(professional -> toSummary(professional, categories.get(professional.getCategoryId())));
 	}
 
@@ -65,6 +75,7 @@ public class SearchProfessionalsUseCaseImpl implements SearchProfessionalsUseCas
 				.firstName(professional.getFirstName())
 				.lastName(professional.getLastName())
 				.category(category)
+				.enabled(professional.isEffectivelyEnabled(category))
 				.build();
 	}
 

@@ -98,6 +98,48 @@ class SearchProfessionalsUseCaseImplTest {
 		assertThat(result.getTotalElements()).isEqualTo(2);
 	}
 
+	@Test
+	void showsOnlyEnabledProfessionalsWhenTheStateIsNotAsked() {
+		returnsPage(List.of());
+
+		useCase.searchProfessionals(ProfessionalSearchCriteria.builder().build(), List.of(), FIRST_PAGE);
+
+		assertThat(capturedCriteria().getEnabled()).isTrue();
+	}
+
+	@Test
+	void keepsTheDisabledFilterWhenItIsAsked() {
+		returnsPage(List.of());
+
+		useCase.searchProfessionals(ProfessionalSearchCriteria.builder().enabled(false).build(), List.of(), FIRST_PAGE);
+
+		assertThat(capturedCriteria().getEnabled()).isFalse();
+	}
+
+	@Test
+	void passesOnlyTheEnabledCategoriesToResolveTheFilter() {
+		returnsPage(List.of());
+		when(categoryRepository.findAll()).thenReturn(List.of(category(101L, "Cardiologia"),
+				Category.builder().id(108L).name("Salud mental").enabled(false).build()));
+
+		useCase.searchProfessionals(ProfessionalSearchCriteria.builder().build(), List.of(), FIRST_PAGE);
+
+		assertThat(capturedCriteria().getEnabledCategoryIds()).containsExactly(101L);
+	}
+
+	@Test
+	void marksEachResultWithItsEffectiveState() {
+		// Uno habilitado en una categoría habilitada; otro habilitado, pero en una categoría dada de baja.
+		returnsPage(List.of(professional(201L, 101L), professional(220L, 108L)));
+		when(categoryRepository.findAll()).thenReturn(List.of(category(101L, "Cardiologia"),
+				Category.builder().id(108L).name("Salud mental").enabled(false).build()));
+
+		PageResult<ProfessionalSummary> result = useCase.searchProfessionals(
+				ProfessionalSearchCriteria.builder().enabled(false).build(), List.of(), FIRST_PAGE);
+
+		assertThat(result.getContent()).extracting(ProfessionalSummary::isEnabled).containsExactly(true, false);
+	}
+
 	private void returnsPage(List<Professional> professionals) {
 		when(professionalRepository.search(any(), any(), any())).thenReturn(PageResult.<Professional>builder()
 				.content(professionals)

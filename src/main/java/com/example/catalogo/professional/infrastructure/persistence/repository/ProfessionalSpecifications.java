@@ -1,5 +1,7 @@
 package com.example.catalogo.professional.infrastructure.persistence.repository;
 
+import java.util.Set;
+
 import com.example.catalogo.professional.infrastructure.persistence.entity.ProfessionalEntity;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
@@ -19,6 +21,14 @@ public final class ProfessionalSpecifications {
 
 	public static Specification<ProfessionalEntity> hasCategory(Long categoryId) {
 		return (root, query, cb) -> cb.equal(root.get("categoryId"), categoryId);
+	}
+
+	// Habilitado efectivo (ADR-0014), la misma regla que Professional.isEffectivelyEnabled. Sin
+	// categorías habilitadas no hay ningún profesional habilitado: un IN vacío no es SQL válido.
+	public static Specification<ProfessionalEntity> effectivelyEnabled(Set<Long> enabledCategoryIds) {
+		return (root, query, cb) -> enabledCategoryIds.isEmpty()
+				? cb.disjunction()
+				: cb.and(cb.isTrue(root.get("enabled")), root.get("categoryId").in(enabledCategoryIds));
 	}
 
 	// Coincidencia parcial sobre "nombre apellido", sin mayúsculas ni tildes, como pide el puerto.

@@ -32,6 +32,9 @@ public class ProfessionalSearchRequest {
 	@Pattern(regexp = ".*\\S.*", message = "must not be blank")
 	private String name;
 
+	// Sin el parámetro queda en null, y el caso de uso aplica el valor por defecto (true).
+	private Boolean enabled;
+
 	@Min(0)
 	private Integer page;
 

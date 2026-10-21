@@ -6,7 +6,7 @@ Es uno de los tres repositorios de la entrega, junto con `turnos-service` y `app
 
 ## Estado
 
-Listado de categorías de profesionales (`GET /api/professional-categories`), búsqueda de profesionales por categoría y nombre, paginada (`GET /api/professionals`), y estado de sincronización (`GET /api/catalog/sync-status`), con la seguridad activa: todo pedido exige un JWT de usuario válido emitido por `turnos-service`, salvo `/actuator/health`. Al arrancar obtiene de la cátedra la configuración de la integración y, si la base está vacía, carga el catálogo completo desde el snapshot de la cátedra. Un chequeo periódico reintenta si esa carga falló. Mientras no haya versión local, las categorías y la búsqueda responden `503 CATALOG_NOT_READY`. Faltan la sincronización incremental (Redis y Kafka), los filtros de habilitado y de disponibilidad, y la agenda.
+Listado de categorías de profesionales (`GET /api/professional-categories`), búsqueda de profesionales por categoría, nombre y estado habilitado, paginada (`GET /api/professionals`), y estado de sincronización (`GET /api/catalog/sync-status`), con la seguridad activa: todo pedido exige un JWT de usuario válido emitido por `turnos-service`, salvo `/actuator/health`. Al arrancar obtiene de la cátedra la configuración de la integración y, si la base está vacía, carga el catálogo completo desde el snapshot de la cátedra. Un chequeo periódico reintenta si esa carga falló. Mientras no haya versión local, las categorías y la búsqueda responden `503 CATALOG_NOT_READY`. Faltan la sincronización incremental (Redis y Kafka), el filtro de disponibilidad y la agenda.
 
 ## Requisitos
 
