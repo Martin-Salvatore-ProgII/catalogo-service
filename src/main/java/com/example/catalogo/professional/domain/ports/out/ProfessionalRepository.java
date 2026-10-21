@@ -15,6 +15,8 @@ public interface ProfessionalRepository {
 	// coincidencia parcial sobre el nombre completo ("nombre apellido") que no distingue mayúsculas
 	// ni tildes (HU-05): "ana gom" encuentra a "Ana Gómez". La regla está declarada acá y la cumple
 	// la base, que pagina y cuenta sin traer todas las filas a memoria.
+	// El filtro enabled es el habilitado efectivo de ADR-0014, igual que Professional.isEffectivelyEnabled:
+	// habilitado es enabled propio en true y la categoría entre criteria.enabledCategoryIds.
 	PageResult<Professional> search(ProfessionalSearchCriteria criteria, List<ProfessionalSortOrder> sort,
 			PageQuery page);
 

@@ -19,4 +19,6 @@ public class ProfessionalSummary {
 	private String firstName;
 	private String lastName;
 	private Category category;
+	// Habilitado efectivo (ADR-0014). En false, la app lo muestra como no disponible para reservar.
+	private boolean enabled;
 }
