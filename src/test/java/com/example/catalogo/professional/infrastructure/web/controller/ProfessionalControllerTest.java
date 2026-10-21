@@ -69,6 +69,8 @@ class ProfessionalControllerTest {
 
 		assertThat(capturedCriteria().getCategoryId()).isNull();
 		assertThat(capturedCriteria().getName()).isNull();
+		// Sin el parámetro, null: el valor por defecto lo pone el caso de uso.
+		assertThat(capturedCriteria().getEnabled()).isNull();
 		assertThat(capturedPage().getPage()).isZero();
 		assertThat(capturedPage().getSize()).isEqualTo(20);
 		// Vacío: el orden por defecto lo pone el caso de uso.
@@ -78,10 +80,11 @@ class ProfessionalControllerTest {
 	@Test
 	void passesTheFiltersAndThePage() throws Exception {
 		mockMvc.perform(get(PROFESSIONALS).param("categoryId", "101").param("name", "ana gom")
-				.param("page", "2").param("size", "5"))
+				.param("enabled", "false").param("page", "2").param("size", "5"))
 				.andExpect(status().isOk());
 
 		assertThat(capturedCriteria().getCategoryId()).isEqualTo(101L);
+		assertThat(capturedCriteria().getEnabled()).isFalse();
 		assertThat(capturedCriteria().getName()).isEqualTo("ana gom");
 		assertThat(capturedPage().getPage()).isEqualTo(2);
 		assertThat(capturedPage().getSize()).isEqualTo(5);
@@ -121,6 +124,7 @@ class ProfessionalControllerTest {
 				.andExpect(jsonPath("$[0].lastName").value("Gómez"))
 				.andExpect(jsonPath("$[0].category.id").value(101))
 				.andExpect(jsonPath("$[0].category.name").value("Cardiologia"))
+				.andExpect(jsonPath("$[0].enabled").value(true))
 				.andExpect(jsonPath("$[0].category.description").doesNotExist())
 				.andExpect(jsonPath("$[0].categoryId").doesNotExist());
 	}
@@ -149,6 +153,7 @@ class ProfessionalControllerTest {
 			"size, 0",
 			"size, 101",
 			"categoryId, abc",
+			"enabled, maybe",
 			"sort, email",
 			"sort, 'lastName,sideways'",
 			"sort, 'desc'",
@@ -217,6 +222,7 @@ class ProfessionalControllerTest {
 				.firstName(firstName)
 				.lastName(lastName)
 				.category(Category.builder().id(categoryId).name(categoryName).description("Descripcion").enabled(true).build())
+				.enabled(true)
 				.build();
 	}
 

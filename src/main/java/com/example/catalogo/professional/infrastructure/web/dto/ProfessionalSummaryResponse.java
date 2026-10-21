@@ -6,8 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-// Un resultado de la búsqueda (esquema ProfessionalSummary del contrato). El campo enabled, que es
-// el habilitado efectivo de ADR-0014, se agrega junto con su filtro.
+// Un resultado de la búsqueda (esquema ProfessionalSummary del contrato).
 @Getter
 @Setter
 @Builder
@@ -18,4 +17,6 @@ public class ProfessionalSummaryResponse {
 	private String firstName;
 	private String lastName;
 	private CategoryRefResponse category;
+	// Habilitado efectivo (ADR-0014): el profesional y su categoría.
+	private boolean enabled;
 }

@@ -1,5 +1,7 @@
 package com.example.catalogo.professional;
 
+import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -52,13 +54,16 @@ class ProfessionalSearchAccessTest {
 		CatalogTables.clear(jdbcClient);
 		jdbcClient.sql("""
 				INSERT INTO professional_category (id, name, description, enabled, created_at, updated_at)
-				VALUES (101, 'Cardiologia', 'Corazon', true, now(), now()), (102, 'Pediatria', 'Niños', true, now(), now())
+				VALUES (101, 'Cardiologia', 'Corazon', true, now(), now()), (102, 'Pediatria', 'Niños', true, now(), now()),
+					(103, 'Dermatologia', 'Piel', false, now(), now())
 				""").update();
 		jdbcClient.sql("""
 				INSERT INTO professional (id, category_id, first_name, last_name, enabled, created_at, updated_at)
 				VALUES (201, 101, 'Ana', 'Gómez', true, now(), now()),
 					(202, 101, 'Martin', 'Rivas', true, now(), now()),
-					(203, 102, 'Lucía', 'Paz', true, now(), now())
+					(203, 102, 'Lucía', 'Paz', true, now(), now()),
+					(204, 102, 'Bruno', 'Torres', false, now(), now()),
+					(205, 103, 'Nicolas', 'Vega', true, now(), now())
 				""").update();
 	}
 
@@ -104,6 +109,26 @@ class ProfessionalSearchAccessTest {
 				// Por nombre descendente: Martin, Lucía | Ana.
 				.andExpect(jsonPath("$.length()").value(1))
 				.andExpect(jsonPath("$[0].firstName").value("Ana"));
+	}
+
+	@Test
+	void byDefaultHidesTheDisabledOnesAndThoseOfADisabledCategory() throws Exception {
+		mockMvc.perform(get(PROFESSIONALS).header(HttpHeaders.AUTHORIZATION, bearer()))
+				.andExpect(status().isOk())
+				.andExpect(header().string("X-Total-Count", "3"))
+				.andExpect(jsonPath("$[*].enabled", everyItem(is(true))));
+	}
+
+	@Test
+	void showsTheDisabledOnesMarkedAsNotAvailableWhenAsked() throws Exception {
+		mockMvc.perform(get(PROFESSIONALS).param("enabled", "false").header(HttpHeaders.AUTHORIZATION, bearer()))
+				.andExpect(status().isOk())
+				.andExpect(header().string("X-Total-Count", "2"))
+				.andExpect(jsonPath("$[0].lastName").value("Torres"))
+				.andExpect(jsonPath("$[0].enabled").value(false))
+				// Vega está habilitado, pero su categoría no (ADR-0014).
+				.andExpect(jsonPath("$[1].lastName").value("Vega"))
+				.andExpect(jsonPath("$[1].enabled").value(false));
 	}
 
 	@Test
