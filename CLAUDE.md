@@ -92,6 +92,7 @@ Spring Boot 4, Spring Security 7 y Jackson 3 cambiaron cosas respecto de version
 - **Clientes de la cátedra:** sin Spring, contra `FakeCatedra` (WireMock en un contenedor). Las respuestas se programan por la API de administración de WireMock; la librería de WireMock no está en el proyecto (su Jetty choca con Spring Boot 4).
 - **Adaptador de persistencia:** `@DataJpaTest` + `@AutoConfigureTestDatabase(replace = NONE)` + `@Import` de `TestcontainersConfiguration`, el adaptador y su mapper. Para leer de verdad de PostgreSQL hay que hacer `flush()` y `clear()` antes: sin eso JPA responde desde memoria, y los errores de restricciones de una colección no aparecen.
 - **Casos de uso y fachada:** JUnit y Mockito, sin Spring. La hora llega por un `Clock` inyectado (`ClockConfig`), que la prueba fija.
+- **Recorridos completos que dependen de "hoy":** importan además `TestClockConfiguration`, que fija el reloj de la aplicación (martes 2026-10-20, 12 h de Argentina). Nunca `LocalDate.now()` en una prueba. El JWT se valida con la hora del sistema, no con ese reloj.
 
 **Parámetros de una lista.** Spring parte por comas un parámetro que se guarda en una lista: `sort=lastName,desc` llegaría como dos valores. `ProfessionalController` lo evita con un `@InitBinder`. En MockMvc, `.param()` no arma el query string; si la prueba mira los enlaces de `Link`, la URL va con los parámetros escritos.
 
@@ -103,7 +104,7 @@ Spring Boot 4, Spring Security 7 y Jackson 3 cambiaron cosas respecto de version
 - Los 401 y 403 que genera la seguridad no tienen cuerpo: traen el encabezado `WWW-Authenticate`. Es lo acordado en el contrato.
 - Una ruta inexistente sin token da 401, no 404, porque todo está protegido por defecto.
 
-**Errores.** `GlobalExceptionHandler` tiene un manejador genérico de `Exception` que responde 500. La excepción de cada feature necesita su propio manejador ahí, o termina como 500. `ProblemDetail` agrega solo el campo `instance`; el `code`, el `path` y los `fieldErrors` del contrato se agregan con `setProperty`.
+**Errores.** `GlobalExceptionHandler` tiene un manejador genérico de `Exception` que responde 500. La excepción de cada feature necesita su propio manejador ahí, o termina como 500. `ProblemDetail` agrega solo el campo `instance`; el `code`, el `path` y los `fieldErrors` del contrato se agregan con `setProperty`. Todo 400 sin código propio (los que arma Spring: JSON mal formado, tipo inválido, parámetro que falta) sale como `VALIDATION_ERROR`: el contrato solo exime de `code` a los 401 y 403.
 
 **Base de datos.** El esquema lo define Flyway; Hibernate solo valida (`ddl-auto: validate`). Una migración ya mergeada no se edita: el cambio va en la siguiente (`V2__...`). Los nombres de columnas se derivan solos de los campos de la entity (`createdAt` es `created_at`).
 
