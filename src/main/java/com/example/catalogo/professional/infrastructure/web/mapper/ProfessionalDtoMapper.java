@@ -31,6 +31,9 @@ public class ProfessionalDtoMapper {
 				.categoryId(request.getCategoryId())
 				.name(request.getName())
 				.enabled(request.getEnabled())
+				.date(request.getDate())
+				.timeFrom(request.getTimeFrom())
+				.timeTo(request.getTimeTo())
 				.build();
 	}
 

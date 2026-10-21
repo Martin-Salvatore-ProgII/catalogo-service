@@ -6,7 +6,7 @@ Es uno de los tres repositorios de la entrega, junto con `turnos-service` y `app
 
 ## Estado
 
-Listado de categorías de profesionales (`GET /api/professional-categories`), búsqueda de profesionales por categoría, nombre y estado habilitado, paginada (`GET /api/professionals`), y estado de sincronización (`GET /api/catalog/sync-status`), con la seguridad activa: todo pedido exige un JWT de usuario válido emitido por `turnos-service`, salvo `/actuator/health`. Al arrancar obtiene de la cátedra la configuración de la integración y, si la base está vacía, carga el catálogo completo desde el snapshot de la cátedra. Un chequeo periódico reintenta si esa carga falló. Mientras no haya versión local, las categorías y la búsqueda responden `503 CATALOG_NOT_READY`. Faltan la sincronización incremental (Redis y Kafka), el filtro de disponibilidad y la agenda.
+Listado de categorías de profesionales (`GET /api/professional-categories`), búsqueda de profesionales por categoría, nombre, estado habilitado y disponibilidad de agenda, paginada (`GET /api/professionals`), y estado de sincronización (`GET /api/catalog/sync-status`), con la seguridad activa: todo pedido exige un JWT de usuario válido emitido por `turnos-service`, salvo `/actuator/health`. Al arrancar obtiene de la cátedra la configuración de la integración y, si la base está vacía, carga el catálogo completo desde el snapshot de la cátedra. Un chequeo periódico reintenta si esa carga falló. Mientras no haya versión local, las categorías y la búsqueda responden `503 CATALOG_NOT_READY`. Faltan la sincronización incremental (Redis y Kafka) y la agenda de un profesional.
 
 ## Requisitos
 
@@ -125,4 +125,5 @@ Lo que sirve a más de una feature se lleva a `shared` en cuanto aparece el segu
 | `web/catalog/RequiresCatalogReady` | Marca un endpoint que responde con la copia local: sin versión local, 503 `CATALOG_NOT_READY`. La hace cumplir `sync` | `category`, `professional` (búsqueda; en la M4, también la agenda) |
 | `config/ClockConfig` | La hora como `Clock` inyectado, para poder fijarla en las pruebas | `sync` |
 | `config/SchedulingConfig` | Habilita los disparadores por tiempo (`@Scheduled`) | `sync` (chequeo periódico) |
+| `config/AvailabilityConfig` | Pasa al dominio el horizonte de fechas configurable (ADR-0065, RNF-09) | `professional` (filtro de disponibilidad) |
 | `config/PaginationConfig`, `web/pagination/*` | La convención de las listas paginadas del contrato: tamaño por defecto y máximo configurables (RNF-09), `X-Total-Count` y `Link` | `professional` (búsqueda) |
