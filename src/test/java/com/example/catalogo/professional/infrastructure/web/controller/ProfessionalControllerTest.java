@@ -11,19 +11,23 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 
 import com.example.catalogo.category.domain.model.Category;
 import com.example.catalogo.professional.application.exception.DateOutOfRangeException;
+import com.example.catalogo.professional.application.exception.ProfessionalNotFoundException;
 import com.example.catalogo.professional.application.service.ProfessionalService;
 import com.example.catalogo.professional.domain.model.PageQuery;
 import com.example.catalogo.professional.domain.model.PageResult;
+import com.example.catalogo.professional.domain.model.ProfessionalAgenda;
 import com.example.catalogo.professional.domain.model.ProfessionalSearchCriteria;
 import com.example.catalogo.professional.domain.model.ProfessionalSortField;
 import com.example.catalogo.professional.domain.model.ProfessionalSortOrder;
 import com.example.catalogo.professional.domain.model.ProfessionalSummary;
+import com.example.catalogo.professional.domain.model.WeeklySchedule;
 import com.example.catalogo.professional.infrastructure.web.mapper.ProfessionalDtoMapper;
 import com.example.catalogo.shared.infrastructure.config.PaginationConfig;
 import com.example.catalogo.sync.application.exception.CatalogNotReadyException;
@@ -219,6 +223,58 @@ class ProfessionalControllerTest {
 	@Test
 	void acceptsTheMaximumPageSize() throws Exception {
 		mockMvc.perform(get(PROFESSIONALS).param("size", "100")).andExpect(status().isOk());
+	}
+
+	// --- Agenda vigente (ADR-0017) ---
+
+	@Test
+	void returnsTheAgendaWithEveryFieldOfTheContract() throws Exception {
+		when(professionalService.getProfessionalAgenda(201L)).thenReturn(ProfessionalAgenda.builder()
+				.id(201L).firstName("Ana").lastName("Gómez")
+				.category(Category.builder().id(101L).name("Cardiologia").description("Corazon").enabled(true).build())
+				.enabled(true)
+				.weeklySchedules(List.of(WeeklySchedule.builder().id(301L).professionalId(201L).dayOfWeek(DayOfWeek.MONDAY)
+						.startTime(LocalTime.of(9, 0)).endTime(LocalTime.of(12, 30)).slotDurationMinutes(30).enabled(true).build()))
+				.catalogVersion(7L)
+				.build());
+
+		mockMvc.perform(get(PROFESSIONALS + "/201/agenda"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.id").value(201))
+				.andExpect(jsonPath("$.firstName").value("Ana"))
+				.andExpect(jsonPath("$.lastName").value("Gómez"))
+				.andExpect(jsonPath("$.category.id").value(101))
+				.andExpect(jsonPath("$.category.name").value("Cardiologia"))
+				.andExpect(jsonPath("$.category.description").doesNotExist())
+				.andExpect(jsonPath("$.enabled").value(true))
+				.andExpect(jsonPath("$.weeklySchedules[0].id").value(301))
+				.andExpect(jsonPath("$.weeklySchedules[0].dayOfWeek").value("MONDAY"))
+				// HH:mm:ss, como pide el contrato, aunque los segundos sean cero.
+				.andExpect(jsonPath("$.weeklySchedules[0].startTime").value("09:00:00"))
+				.andExpect(jsonPath("$.weeklySchedules[0].endTime").value("12:30:00"))
+				.andExpect(jsonPath("$.weeklySchedules[0].slotDurationMinutes").value(30))
+				.andExpect(jsonPath("$.weeklySchedules[0].enabled").doesNotExist())
+				.andExpect(jsonPath("$.weeklySchedules[0].professionalId").doesNotExist())
+				.andExpect(jsonPath("$.catalogVersion").value(7));
+	}
+
+	@Test
+	void answersProfessionalNotFoundForAnUnknownId() throws Exception {
+		when(professionalService.getProfessionalAgenda(999L)).thenThrow(new ProfessionalNotFoundException(999L));
+
+		mockMvc.perform(get(PROFESSIONALS + "/999/agenda"))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("PROFESSIONAL_NOT_FOUND"));
+	}
+
+	@Test
+	void theAgendaAnswersCatalogNotReadyWithoutReachingTheService() throws Exception {
+		doThrow(new CatalogNotReadyException()).when(syncService).requireCatalogReady();
+
+		mockMvc.perform(get(PROFESSIONALS + "/201/agenda"))
+				.andExpect(status().isServiceUnavailable())
+				.andExpect(jsonPath("$.code").value("CATALOG_NOT_READY"));
+		verifyNoInteractions(professionalService);
 	}
 
 	@Test

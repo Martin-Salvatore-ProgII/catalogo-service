@@ -123,6 +123,45 @@ class JpaWeeklyScheduleRepositoryAdapterTest {
 		assertThat(jpaWeeklyScheduleRepository.findById(301L).orElseThrow().getStartTime()).isEqualTo(LocalTime.of(13, 0));
 	}
 
+	// --- Horarios de la agenda ---
+
+	@Test
+	void findsTheEnabledSchedulesOrderedByDayOfTheWeekAndStartTime() {
+		// Guardados desordenados: alfabéticamente, FRIDAY quedaría antes que MONDAY.
+		adapter.saveAll(List.of(
+				schedule(303L, DayOfWeek.FRIDAY, LocalTime.of(9, 0), LocalTime.of(12, 0), 30),
+				schedule(302L, DayOfWeek.MONDAY, LocalTime.of(15, 0), LocalTime.of(18, 0), 30),
+				schedule(301L, DayOfWeek.MONDAY, LocalTime.of(9, 0), LocalTime.of(12, 0), 30),
+				schedule(304L, DayOfWeek.SUNDAY, LocalTime.of(10, 0), LocalTime.of(11, 0), 15)));
+		readFromDatabase();
+
+		assertThat(adapter.findEnabledByProfessionalOrderedByDayAndTime(201L))
+				.extracting(WeeklySchedule::getId).containsExactly(301L, 302L, 303L, 304L);
+	}
+
+	@Test
+	void leavesOutDisabledSchedulesAndThoseOfOtherProfessionals() {
+		entityManager.getEntityManager().createNativeQuery("""
+				INSERT INTO professional (id, category_id, first_name, last_name, enabled, created_at, updated_at)
+				VALUES (202, 101, 'Bruno', 'Paz', true, now(), now())
+				""").executeUpdate();
+		WeeklySchedule disabled = schedule(302L, DayOfWeek.MONDAY, LocalTime.of(15, 0), LocalTime.of(18, 0), 30);
+		disabled.setEnabled(false);
+		WeeklySchedule another = schedule(303L, DayOfWeek.MONDAY, LocalTime.of(9, 0), LocalTime.of(12, 0), 30);
+		another.setProfessionalId(202L);
+		adapter.saveAll(List.of(schedule(301L, DayOfWeek.MONDAY, LocalTime.of(9, 0), LocalTime.of(12, 0), 30),
+				disabled, another));
+		readFromDatabase();
+
+		assertThat(adapter.findEnabledByProfessionalOrderedByDayAndTime(201L))
+				.extracting(WeeklySchedule::getId).containsExactly(301L);
+	}
+
+	@Test
+	void returnsAnEmptyListForAProfessionalWithoutSchedules() {
+		assertThat(adapter.findEnabledByProfessionalOrderedByDayAndTime(201L)).isEmpty();
+	}
+
 	private WeeklySchedule schedule(Long id, DayOfWeek day, LocalTime start, LocalTime end, int slotMinutes) {
 		return WeeklySchedule.builder()
 				.id(id)

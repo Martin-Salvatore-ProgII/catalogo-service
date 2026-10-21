@@ -6,13 +6,17 @@ import java.util.List;
 
 import com.example.catalogo.category.domain.model.Category;
 import com.example.catalogo.professional.domain.model.PageQuery;
+import com.example.catalogo.professional.domain.model.ProfessionalAgenda;
 import com.example.catalogo.professional.domain.model.ProfessionalSearchCriteria;
 import com.example.catalogo.professional.domain.model.ProfessionalSortField;
 import com.example.catalogo.professional.domain.model.ProfessionalSortOrder;
 import com.example.catalogo.professional.domain.model.ProfessionalSummary;
+import com.example.catalogo.professional.domain.model.WeeklySchedule;
 import com.example.catalogo.professional.infrastructure.web.dto.CategoryRefResponse;
+import com.example.catalogo.professional.infrastructure.web.dto.ProfessionalAgendaResponse;
 import com.example.catalogo.professional.infrastructure.web.dto.ProfessionalSearchRequest;
 import com.example.catalogo.professional.infrastructure.web.dto.ProfessionalSummaryResponse;
+import com.example.catalogo.professional.infrastructure.web.dto.WeeklyScheduleResponse;
 import com.example.catalogo.shared.infrastructure.config.PaginationProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -76,6 +80,34 @@ public class ProfessionalDtoMapper {
 				.lastName(professional.getLastName())
 				.category(toCategoryRef(professional.getCategory()))
 				.enabled(professional.isEnabled())
+				.build();
+	}
+
+	public ProfessionalAgendaResponse toResponse(ProfessionalAgenda agenda) {
+		if (agenda == null) {
+			return null;
+		}
+		return ProfessionalAgendaResponse.builder()
+				.id(agenda.getId())
+				.firstName(agenda.getFirstName())
+				.lastName(agenda.getLastName())
+				.category(toCategoryRef(agenda.getCategory()))
+				.enabled(agenda.isEnabled())
+				.weeklySchedules(agenda.getWeeklySchedules().stream().map(this::toScheduleResponse).toList())
+				.catalogVersion(agenda.getCatalogVersion())
+				.build();
+	}
+
+	private WeeklyScheduleResponse toScheduleResponse(WeeklySchedule schedule) {
+		if (schedule == null) {
+			return null;
+		}
+		return WeeklyScheduleResponse.builder()
+				.id(schedule.getId())
+				.dayOfWeek(schedule.getDayOfWeek())
+				.startTime(schedule.getStartTime())
+				.endTime(schedule.getEndTime())
+				.slotDurationMinutes(schedule.getSlotDurationMinutes())
 				.build();
 	}
 

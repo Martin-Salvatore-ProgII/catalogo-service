@@ -2,6 +2,7 @@ package com.example.catalogo.professional.infrastructure.persistence.adapter;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import com.example.catalogo.professional.domain.model.PageQuery;
 import com.example.catalogo.professional.domain.model.PageResult;
@@ -27,6 +28,11 @@ public class JpaProfessionalRepositoryAdapter implements ProfessionalRepository 
 
 	private final JpaProfessionalRepository jpaProfessionalRepository;
 	private final ProfessionalMapper professionalMapper;
+
+	@Override
+	public Optional<Professional> findById(Long id) {
+		return jpaProfessionalRepository.findById(id).map(professionalMapper::toDomainModel);
+	}
 
 	@Override
 	public PageResult<Professional> search(ProfessionalSearchCriteria criteria, List<ProfessionalSortOrder> sort,

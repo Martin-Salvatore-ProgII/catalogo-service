@@ -1,6 +1,7 @@
 package com.example.catalogo.professional.domain.ports.out;
 
 import java.util.List;
+import java.util.Optional;
 
 import com.example.catalogo.professional.domain.model.PageQuery;
 import com.example.catalogo.professional.domain.model.PageResult;
@@ -19,6 +20,8 @@ public interface ProfessionalRepository {
 	// habilitado es enabled propio en true y la categoría entre criteria.enabledCategoryIds.
 	// La fecha es disponibilidad de agenda (ADR-0013): algún horario habilitado el día de la semana de
 	// esa fecha y, si hay franja, que comparta al menos un minuto con ella (tocarse en el borde no alcanza).
+	Optional<Professional> findById(Long id);
+
 	PageResult<Professional> search(ProfessionalSearchCriteria criteria, List<ProfessionalSortOrder> sort,
 			PageQuery page);
 
