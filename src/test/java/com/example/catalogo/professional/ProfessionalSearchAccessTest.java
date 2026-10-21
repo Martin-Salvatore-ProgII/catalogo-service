@@ -1,5 +1,6 @@
 package com.example.catalogo.professional;
 
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -75,6 +76,8 @@ class ProfessionalSearchAccessTest {
 	@AfterEach
 	void removeProfessionals() {
 		CatalogTables.clear(jdbcClient);
+		// El contexto lo comparten otras pruebas, que esperan la versión del arranque.
+		jdbcClient.sql("UPDATE sync_state SET local_version = 1").update();
 	}
 
 	@Test
@@ -160,6 +163,51 @@ class ProfessionalSearchAccessTest {
 		mockMvc.perform(get(PROFESSIONALS).param("date", yesterday.toString()).header(HttpHeaders.AUTHORIZATION, bearer()))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("DATE_OUT_OF_RANGE"));
+	}
+
+	// --- Agenda vigente (ADR-0017) ---
+
+	@Test
+	void theAgendaRequiresAToken() throws Exception {
+		mockMvc.perform(get(PROFESSIONALS + "/201/agenda"))
+				.andExpect(status().isUnauthorized())
+				.andExpect(content().string(""));
+	}
+
+	@Test
+	void theAgendaReturnsTheEnabledSchedulesInOrderAndTheLocalVersion() throws Exception {
+		jdbcClient.sql("""
+				INSERT INTO weekly_schedule (id, professional_id, day_of_week, start_time, end_time,
+					slot_duration_minutes, enabled, created_at, updated_at)
+				VALUES (303, 201, 'FRIDAY', '09:00', '12:00', 30, true, now(), now()),
+					(302, 201, 'MONDAY', '15:00', '18:00', 20, true, now(), now()),
+					(301, 201, 'MONDAY', '09:00', '12:00', 30, true, now(), now()),
+					(304, 201, 'TUESDAY', '09:00', '12:00', 30, false, now(), now())
+				""").update();
+		jdbcClient.sql("UPDATE sync_state SET local_version = 7").update();
+
+		mockMvc.perform(get(PROFESSIONALS + "/201/agenda").header(HttpHeaders.AUTHORIZATION, bearer()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.lastName").value("Gómez"))
+				.andExpect(jsonPath("$.category.name").value("Cardiologia"))
+				.andExpect(jsonPath("$.enabled").value(true))
+				.andExpect(jsonPath("$.weeklySchedules[*].id", contains(301, 302, 303)))
+				.andExpect(jsonPath("$.weeklySchedules[0].startTime").value("09:00:00"))
+				.andExpect(jsonPath("$.catalogVersion").value(7));
+	}
+
+	@Test
+	void theAgendaOfAProfessionalInADisabledCategoryIsReturnedAsNotEnabled() throws Exception {
+		mockMvc.perform(get(PROFESSIONALS + "/205/agenda").header(HttpHeaders.AUTHORIZATION, bearer()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.enabled").value(false));
+	}
+
+	@Test
+	void theAgendaOfAnUnknownProfessionalIsNotFound() throws Exception {
+		mockMvc.perform(get(PROFESSIONALS + "/999/agenda").header(HttpHeaders.AUTHORIZATION, bearer()))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("PROFESSIONAL_NOT_FOUND"));
 	}
 
 	@Test

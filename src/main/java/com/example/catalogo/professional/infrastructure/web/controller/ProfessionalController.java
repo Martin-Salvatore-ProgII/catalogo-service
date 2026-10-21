@@ -5,6 +5,7 @@ import java.util.List;
 import com.example.catalogo.professional.application.service.ProfessionalService;
 import com.example.catalogo.professional.domain.model.PageResult;
 import com.example.catalogo.professional.domain.model.ProfessionalSummary;
+import com.example.catalogo.professional.infrastructure.web.dto.ProfessionalAgendaResponse;
 import com.example.catalogo.professional.infrastructure.web.dto.ProfessionalSearchRequest;
 import com.example.catalogo.professional.infrastructure.web.dto.ProfessionalSummaryResponse;
 import com.example.catalogo.professional.infrastructure.web.mapper.ProfessionalDtoMapper;
@@ -17,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.InitBinder;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -42,6 +44,13 @@ public class ProfessionalController {
 		return ResponseEntity.ok()
 				.headers(PaginationHeaders.of(result.getTotalElements(), result.getPage(), result.getSize()))
 				.body(professionals);
+	}
+
+	// La usan la app (detalle de un profesional) y turnos (disponibilidad y reserva), ADR-0017.
+	@GetMapping("/{id}/agenda")
+	@RequiresCatalogReady
+	public ResponseEntity<ProfessionalAgendaResponse> getProfessionalAgenda(@PathVariable Long id) {
+		return ResponseEntity.ok(professionalDtoMapper.toResponse(professionalService.getProfessionalAgenda(id)));
 	}
 
 	// Spring parte por comas un parámetro que se guarda en una lista, y "sort=lastName,desc"

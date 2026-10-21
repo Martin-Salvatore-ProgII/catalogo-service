@@ -3,6 +3,7 @@ package com.example.catalogo.shared.infrastructure.web.advice;
 import java.util.List;
 
 import com.example.catalogo.professional.application.exception.DateOutOfRangeException;
+import com.example.catalogo.professional.application.exception.ProfessionalNotFoundException;
 import com.example.catalogo.sync.application.exception.CatalogNotReadyException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -29,6 +30,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 	private static final String VALIDATION_ERROR = "VALIDATION_ERROR";
 	private static final String CATALOG_NOT_READY = "CATALOG_NOT_READY";
 	private static final String DATE_OUT_OF_RANGE = "DATE_OUT_OF_RANGE";
+	private static final String PROFESSIONAL_NOT_FOUND = "PROFESSIONAL_NOT_FOUND";
 
 	@Override
 	protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
@@ -60,6 +62,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
 		problem.setProperty("code", DATE_OUT_OF_RANGE);
 		return handleExceptionInternal(ex, problem, new HttpHeaders(), HttpStatus.BAD_REQUEST, request);
+	}
+
+	// Mismo código que la cátedra (REF §13.1): turnos lo trata igual venga de donde venga.
+	@ExceptionHandler(ProfessionalNotFoundException.class)
+	public ResponseEntity<Object> handleProfessionalNotFound(ProfessionalNotFoundException ex, WebRequest request) {
+		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+		problem.setProperty("code", PROFESSIONAL_NOT_FOUND);
+		return handleExceptionInternal(ex, problem, new HttpHeaders(), HttpStatus.NOT_FOUND, request);
 	}
 
 	@ExceptionHandler(Exception.class)
