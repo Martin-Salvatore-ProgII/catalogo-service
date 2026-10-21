@@ -18,9 +18,9 @@ import java.time.temporal.TemporalAdjusters;
 
 import com.example.catalogo.CatalogTables;
 import com.example.catalogo.TestCatedraConfiguration;
+import com.example.catalogo.TestClockConfiguration;
 import com.example.catalogo.TestJwtKeysConfiguration;
 import com.example.catalogo.TestcontainersConfiguration;
-import com.example.catalogo.professional.domain.model.AgendaZone;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,7 +39,8 @@ import org.springframework.test.web.servlet.MockMvc;
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-@Import({ TestcontainersConfiguration.class, TestJwtKeysConfiguration.class, TestCatedraConfiguration.class })
+@Import({ TestcontainersConfiguration.class, TestJwtKeysConfiguration.class, TestCatedraConfiguration.class,
+		TestClockConfiguration.class })
 class ProfessionalSearchAccessTest {
 
 	private static final String PROFESSIONALS = "/api/professionals";
@@ -146,8 +147,8 @@ class ProfessionalSearchAccessTest {
 				VALUES (301, 201, 'MONDAY', '09:00', '12:00', 30, true, now(), now()),
 					(302, 202, 'MONDAY', '14:00', '18:00', 30, true, now(), now())
 				""").update();
-		// El próximo lunes, siempre dentro del horizonte.
-		LocalDate monday = LocalDate.now(AgendaZone.ZONE).with(TemporalAdjusters.next(DayOfWeek.MONDAY));
+		// El lunes siguiente al "hoy" fijo de la prueba, dentro del horizonte.
+		LocalDate monday = TestClockConfiguration.TODAY.with(TemporalAdjusters.next(DayOfWeek.MONDAY));
 
 		mockMvc.perform(get(PROFESSIONALS).param("date", monday.toString()).param("timeFrom", "10:00")
 				.param("timeTo", "11:00").header(HttpHeaders.AUTHORIZATION, bearer()))
@@ -158,7 +159,7 @@ class ProfessionalSearchAccessTest {
 
 	@Test
 	void rejectsAPastDate() throws Exception {
-		LocalDate yesterday = LocalDate.now(AgendaZone.ZONE).minusDays(1);
+		LocalDate yesterday = TestClockConfiguration.TODAY.minusDays(1);
 
 		mockMvc.perform(get(PROFESSIONALS).param("date", yesterday.toString()).header(HttpHeaders.AUTHORIZATION, bearer()))
 				.andExpect(status().isBadRequest())
