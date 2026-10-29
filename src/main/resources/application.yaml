@@ -13,6 +13,19 @@ spring:
     open-in-view: false
 
 catalogo:
+  catedra:
+    # URL base de la API de la cátedra y JWT técnico, desde el .env (ADR-0005). Redis y Kafka no se
+    # configuran acá: se piden a la cátedra al arrancar.
+    api-url: ${CATEDRA_API_URL}
+    technical-token: ${CATEDRA_TECHNICAL_TOKEN}
+    # Timeouts hacia la cátedra (ADR-0029, RNF-09). Se pueden cambiar con las variables
+    # CATALOGO_CATEDRA_CONNECT_TIMEOUT y CATALOGO_CATEDRA_READ_TIMEOUT.
+    connect-timeout: 2s
+    read-timeout: 5s
+  sync:
+    # Intervalo del chequeo periódico de sincronización (ADR-0006, RNF-09). Se puede cambiar con
+    # la variable CATALOGO_SYNC_CHECK_INTERVAL.
+    check-interval: 5m
   security:
     jwt:
       # Ubicación de la clave pública RSA con la que se valida el JWT de usuario que emite el

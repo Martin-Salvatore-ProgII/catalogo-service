@@ -9,6 +9,8 @@ import java.security.KeyPair;
 import java.time.Duration;
 import java.time.Instant;
 
+import com.example.catalogo.CatalogTables;
+import com.example.catalogo.TestCatedraConfiguration;
 import com.example.catalogo.TestJwtKeysConfiguration;
 import com.example.catalogo.TestcontainersConfiguration;
 import com.example.catalogo.category.infrastructure.persistence.entity.CategoryEntity;
@@ -21,6 +23,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
@@ -30,7 +33,7 @@ import org.springframework.test.web.servlet.MockMvc;
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-@Import({ TestcontainersConfiguration.class, TestJwtKeysConfiguration.class })
+@Import({ TestcontainersConfiguration.class, TestJwtKeysConfiguration.class, TestCatedraConfiguration.class })
 class CategoryAccessTest {
 
 	private static final String CATEGORIES = "/api/professional-categories";
@@ -44,9 +47,13 @@ class CategoryAccessTest {
 	@Autowired
 	private JpaCategoryRepository jpaCategoryRepository;
 
+	@Autowired
+	private JdbcClient jdbcClient;
+
+	// Al arrancar, el servicio cargó el snapshot de la cátedra falsa: se reemplaza por categorías propias.
 	@BeforeEach
 	void storeCategories() {
-		jpaCategoryRepository.deleteAll();
+		CatalogTables.clear(jdbcClient);
 		jpaCategoryRepository.save(category(102L, "Pediatria", true));
 		jpaCategoryRepository.save(category(101L, "Cardiologia", true));
 		jpaCategoryRepository.save(category(108L, "Salud mental", false));
@@ -56,7 +63,7 @@ class CategoryAccessTest {
 	// terminar para no afectar a otras pruebas que usen la misma base.
 	@AfterEach
 	void removeCategories() {
-		jpaCategoryRepository.deleteAll();
+		CatalogTables.clear(jdbcClient);
 	}
 
 	// --- Los tres casos que tienen que rechazarse ---

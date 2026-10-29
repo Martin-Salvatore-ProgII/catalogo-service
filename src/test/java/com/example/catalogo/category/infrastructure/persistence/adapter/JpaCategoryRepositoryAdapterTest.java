@@ -76,6 +76,68 @@ class JpaCategoryRepositoryAdapterTest {
 		assertThat(categories).isEmpty();
 	}
 
+	@Test
+	void savesCategoriesWithTheCatedraId() {
+		adapter.saveAll(List.of(category(101L, "Cardiologia", true), category(102L, "Pediatria", false)));
+		entityManager.flush();
+		entityManager.clear();
+
+		CategoryEntity saved = jpaCategoryRepository.findById(102L).orElseThrow();
+		assertThat(jpaCategoryRepository.count()).isEqualTo(2);
+		assertThat(saved.getName()).isEqualTo("Pediatria");
+		assertThat(saved.isEnabled()).isFalse();
+		assertThat(saved.getCreatedAt()).isEqualTo(CREATED_AT);
+		assertThat(saved.getUpdatedAt()).isEqualTo(UPDATED_AT);
+	}
+
+	@Test
+	void replacesACategoryThatIsAlreadyStored() {
+		store(101L, "Cardiologia", true);
+
+		adapter.saveAll(List.of(category(101L, "Cardiologia infantil", false)));
+		entityManager.flush();
+		entityManager.clear();
+
+		CategoryEntity saved = jpaCategoryRepository.findById(101L).orElseThrow();
+		assertThat(jpaCategoryRepository.count()).isEqualTo(1);
+		assertThat(saved.getName()).isEqualTo("Cardiologia infantil");
+		assertThat(saved.isEnabled()).isFalse();
+	}
+
+	@Test
+	void deletesAllCategories() {
+		store(101L, "Cardiologia", true);
+		store(102L, "Pediatria", false);
+
+		adapter.deleteAll();
+
+		assertThat(jpaCategoryRepository.count()).isZero();
+	}
+
+	@Test
+	void savesTheSameIdsAgainAfterDeletingAllInTheSameTransaction() {
+		// Es lo que hace el snapshot: borrar todo y volver a guardar, en una sola transacción.
+		store(101L, "Cardiologia", true);
+
+		adapter.deleteAll();
+		adapter.saveAll(List.of(category(101L, "Cardiologia", false)));
+		entityManager.flush();
+		entityManager.clear();
+
+		assertThat(jpaCategoryRepository.findById(101L).orElseThrow().isEnabled()).isFalse();
+	}
+
+	private Category category(Long id, String name, boolean enabled) {
+		return Category.builder()
+				.id(id)
+				.name(name)
+				.description("Descripcion de " + name)
+				.enabled(enabled)
+				.createdAt(CREATED_AT)
+				.updatedAt(UPDATED_AT)
+				.build();
+	}
+
 	// Guarda una fila como lo hará la sincronización, con el id de la cátedra, y vacía la memoria
 	// de JPA para que la lectura salga de PostgreSQL.
 	private void store(Long id, String name, boolean enabled) {

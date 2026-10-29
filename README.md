@@ -6,11 +6,12 @@ Es uno de los tres repositorios de la entrega, junto con `turnos-service` y `app
 
 ## Estado
 
-Listado de categorías de profesionales (`GET /api/professional-categories`), con la seguridad activa: todo pedido exige un JWT de usuario válido emitido por `turnos-service`, salvo `/actuator/health`. Todavía no tiene sincronización con la cátedra, así que las tablas están vacías; faltan también la búsqueda de profesionales y la agenda.
+Listado de categorías de profesionales (`GET /api/professional-categories`) y estado de sincronización (`GET /api/catalog/sync-status`), con la seguridad activa: todo pedido exige un JWT de usuario válido emitido por `turnos-service`, salvo `/actuator/health`. Al arrancar obtiene de la cátedra la configuración de la integración y, si la base está vacía, carga el catálogo completo desde el snapshot de la cátedra. Un chequeo periódico reintenta si esa carga falló. Mientras no haya versión local, las categorías responden `503 CATALOG_NOT_READY`. Faltan la sincronización incremental (Redis y Kafka), la búsqueda de profesionales y la agenda.
 
 ## Requisitos
 
 - **Docker** con Docker Compose. Alcanza para levantar el servicio y para correr las pruebas.
+- **Acceso a la red de la cátedra**, para levantar el servicio: al arrancar le pide la configuración de la integración, y sin respuesta no arranca. Las pruebas no lo necesitan.
 - **Java 25**, solo para compilar o correr las pruebas fuera de Docker. Gradle no hace falta instalarlo: se usa el wrapper (`./gradlew`).
 
 ## Configuración
@@ -28,8 +29,18 @@ cp .env.example .env
 | `DB_PASSWORD` | Clave de la base. Cambiarla | `cambiar-esta-clave` |
 | `CATALOGO_PORT` | Puerto del servicio en la máquina | `8081` |
 | `CATALOGO_DB_PORT` | Puerto de PostgreSQL en la máquina | `5433` |
+| `CATEDRA_API_URL` | URL base de la API de la cátedra | La que indica la cátedra |
+| `CATEDRA_TECHNICAL_TOKEN` | JWT técnico de la cuenta del proyecto ante la cátedra. Es un secreto | El `id_token` del registro de la cuenta técnica |
 
 El servicio recibe la conexión en `DB_URL`, `DB_USER` y `DB_PASSWORD`. Con Docker Compose, `DB_URL` se arma sola a partir de `DB_NAME`. No hay valores por defecto: si falta alguna, el servicio no arranca.
+
+### Integración con la cátedra
+
+En el `.env` van solo la URL base y el JWT técnico. Redis, Kafka y sus topics no se configuran: al arrancar, el servicio los pide con `GET /api/student/integration` y los guarda solo en memoria (ADR-0005). Si la cátedra no responde (con un reintento), rechaza el JWT o la integración no está `PROVISIONED`, el servicio no arranca y lo informa en el log, sin mostrar valores.
+
+Los timeouts hacia la cátedra tienen un valor inicial de 2 segundos para conectar y 5 para la respuesta (ADR-0029). Se pueden cambiar con `CATALOGO_CATEDRA_CONNECT_TIMEOUT` y `CATALOGO_CATEDRA_READ_TIMEOUT` (por ejemplo, `3s`).
+
+El chequeo periódico de sincronización corre cada 5 minutos (ADR-0006). Se cambia con `CATALOGO_SYNC_CHECK_INTERVAL` (por ejemplo, `1m`).
 
 ### Clave pública del JWT de usuario
 
@@ -70,7 +81,7 @@ Agregando `-v` se borra también el volumen con los datos de la base.
 
 ### Sin Docker Compose
 
-Para probar el servicio a mano sin configurar nada, con una base descartable:
+Para probar el servicio a mano sin configurar nada, con una base descartable y una cátedra simulada (no hace falta la red de la cátedra):
 
 ```
 ./gradlew bootTestRun
@@ -84,16 +95,33 @@ Necesita Docker en ejecución; los datos se pierden al detenerlo.
 ./gradlew test
 ```
 
-Las pruebas usan PostgreSQL real con Testcontainers, así que **Docker tiene que estar corriendo**. No hay que levantar nada a mano ni definir variables. El detalle de qué prueba cada cosa está en [`src/test/README.md`](src/test/README.md).
+Las pruebas usan PostgreSQL real y una cátedra simulada con WireMock, las dos en contenedores de Testcontainers, así que **Docker tiene que estar corriendo**. Ninguna prueba habla con la cátedra real. No hay que levantar nada a mano ni definir variables. El detalle de qué prueba cada cosa está en [`src/test/README.md`](src/test/README.md).
 
 Las mismas pruebas corren en GitHub Actions en cada pull request hacia `develop` o `main` (`.github/workflows/ci.yml`).
 
 ## Estructura
 
-El código sigue la arquitectura hexagonal de la cátedra: un paquete por feature con las capas `domain`, `application` e `infrastructure`, y un paquete `shared` para lo transversal. Cada paquete tiene un `package-info.java` que explica qué va ahí. La regla de dependencias entre capas la verifica `ArchitectureTest`.
+El código sigue la arquitectura hexagonal de la cátedra: un paquete por feature con las capas `domain`, `application` e `infrastructure`, y un paquete `shared` para lo transversal. Cada paquete tiene un `package-info.java` que explica qué va ahí. La regla de dependencias entre capas, y que una feature solo use el `domain` de otra (ADR-0062), las verifica `ArchitectureTest`.
 
 ```
 com.example.catalogo
 ├── category/      feature de categorías de profesionales
-└── shared/        configuración, seguridad y manejo de errores comunes
+├── professional/  feature de profesionales y sus horarios semanales
+├── sync/          feature de sincronización con la cátedra (por ahora, su estado)
+└── shared/        configuración (cliente e integración de la cátedra, seguridad) y manejo de errores comunes
 ```
+
+### Piezas de `shared` y quién las usa
+
+Lo que sirve a más de una feature se lleva a `shared` en cuanto aparece el segundo uso (ADR-0063).
+
+| Pieza | Qué hace | La usan |
+| --- | --- | --- |
+| `config/CatedraRestClientConfig` | Cliente HTTP de la cátedra, con el JWT técnico y los timeouts | Integración al arrancar, `sync` (snapshot) |
+| `rest/CatedraReadExecutor` | Lectura a la cátedra con un reintento (ADR-0029) y mensajes de falla sin su dirección | Integración al arrancar, `sync` (snapshot) |
+| `config/CatedraIntegrationConfig` | Pide la integración al arrancar; sin ella, el servicio no arranca (ADR-0005) | Redis y Kafka, desde la M5 |
+| `config/JwtConfig`, `config/SecurityConfig` | Validación del JWT de usuario y reglas de acceso | Todos los endpoints |
+| `web/advice/GlobalExceptionHandler` | Errores `problem+json` | Todos los endpoints |
+| `web/catalog/RequiresCatalogReady` | Marca un endpoint que responde con la copia local: sin versión local, 503 `CATALOG_NOT_READY`. La hace cumplir `sync` | `category` (y en la M4, la búsqueda y la agenda) |
+| `config/ClockConfig` | La hora como `Clock` inyectado, para poder fijarla en las pruebas | `sync` |
+| `config/SchedulingConfig` | Habilita los disparadores por tiempo (`@Scheduled`) | `sync` (chequeo periódico) |
