@@ -52,9 +52,9 @@ Los tokens los emite turnos, así que para llamar a este servicio a mano hay que
 
 El detalle está en `docs/guia-git.md`. En resumen:
 
-- **El agente** crea la rama de la issue, vinculada a ella: `gh issue develop <N> --base develop --name <tipo>/<N>-<descripcion> --checkout`. Escribe los archivos y corre `./gradlew build`.
+- **El agente** crea la rama de la issue solo en local, desde `develop` actualizada: `git checkout -b <tipo>/<N>-<descripcion>`. No escribe nada en GitHub. Escribe los archivos y corre `./gradlew build`.
 - **El alumno** revisa, commitea, pushea, abre el pull request a `develop` y mergea. El agente no commitea, no pushea commits ni mergea, y no crea ni cierra issues.
-- Al terminar, el agente entrega un bloque de comandos listo para pegar (`git add` por commit, `git commit -m`, `git push`, `gh pr create --base develop`, `gh pr merge --merge --delete-branch`, `gh issue close`). Mensajes en español, con Conventional Commits, sin atribuciones a herramientas.
+- Al terminar, el agente entrega un bloque de comandos listo para pegar (`git add` por commit, `git commit -m`, `git push`, `gh pr create --base develop`, `gh pr merge --merge --delete-branch`, `gh issue close`). Mensajes en español, con Conventional Commits, sin atribuciones a herramientas. Cada comando en una sola línea, sin `\` de continuación.
 - Antes de crear la rama de la issue siguiente, verificar con `git fetch` que el pull request anterior ya está en `origin/develop`.
 - Al cerrar la última issue de una milestone se crea la rama `milestone/<n>-<nombre>` y el pull request a `main` sale de ahí, con revisión del profesor. Nunca de `develop`.
 - Una decisión que afecta al otro servicio se propone para `docs` (ADR), con permiso del alumno antes de escribirla.
