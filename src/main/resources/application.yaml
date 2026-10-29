@@ -5,3 +5,19 @@ spring:
     url: ${DB_URL}
     username: ${DB_USER}
     password: ${DB_PASSWORD}
+  jpa:
+    # El esquema lo define Flyway. Hibernate solo verifica que las entities coincidan con las tablas.
+    hibernate:
+      ddl-auto: validate
+    # La sesión de base se cierra al terminar el caso de uso, no al terminar la respuesta HTTP.
+    open-in-view: false
+
+catalogo:
+  security:
+    jwt:
+      # Ubicación de la clave pública RSA con la que se valida el JWT de usuario que emite el
+      # servicio de turnos (ADR-0032).
+      public-key-location: ${JWT_PUBLIC_KEY_LOCATION}
+    cors:
+      # Orígenes web que pueden llamar a la API desde un navegador. Vacío: ninguno (ADR-0036).
+      allowed-origins: []
