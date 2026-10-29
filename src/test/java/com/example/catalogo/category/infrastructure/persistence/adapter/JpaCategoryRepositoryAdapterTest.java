@@ -45,6 +45,22 @@ class JpaCategoryRepositoryAdapterTest {
 	}
 
 	@Test
+	void findsACategoryByIdEvenIfItIsDisabled() {
+		store(108L, "Salud mental", false);
+
+		assertThat(adapter.findById(108L)).get().extracting(Category::getName).isEqualTo("Salud mental");
+		assertThat(adapter.findById(999L)).isEmpty();
+	}
+
+	@Test
+	void findAllReturnsEnabledAndDisabledCategories() {
+		store(101L, "Cardiologia", true);
+		store(108L, "Salud mental", false);
+
+		assertThat(adapter.findAll()).extracting(Category::getId).containsExactlyInAnyOrder(101L, 108L);
+	}
+
+	@Test
 	void returnsCategoriesOrderedByName() {
 		store(103L, "Pediatria", true);
 		store(101L, "Traumatologia", true);

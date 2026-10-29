@@ -1,5 +1,6 @@
 package com.example.catalogo.professional.infrastructure.persistence.adapter;
 
+import java.util.Comparator;
 import java.util.List;
 
 import com.example.catalogo.professional.domain.model.WeeklySchedule;
@@ -15,6 +16,16 @@ public class JpaWeeklyScheduleRepositoryAdapter implements WeeklyScheduleReposit
 
 	private final JpaWeeklyScheduleRepository jpaWeeklyScheduleRepository;
 	private final WeeklyScheduleMapper weeklyScheduleMapper;
+
+	// El día se guarda como texto, y la base lo ordenaría alfabéticamente (FRIDAY antes que MONDAY).
+	// Se ordena acá por el orden de DayOfWeek; son pocos horarios por profesional.
+	@Override
+	public List<WeeklySchedule> findEnabledByProfessionalOrderedByDayAndTime(Long professionalId) {
+		return jpaWeeklyScheduleRepository.findAllByProfessionalIdAndEnabledTrue(professionalId).stream()
+				.map(weeklyScheduleMapper::toDomainModel)
+				.sorted(Comparator.comparing(WeeklySchedule::getDayOfWeek).thenComparing(WeeklySchedule::getStartTime))
+				.toList();
+	}
 
 	// Con el id ya asignado, Spring Data busca la fila por id y la actualiza, o la crea si no está.
 	@Override

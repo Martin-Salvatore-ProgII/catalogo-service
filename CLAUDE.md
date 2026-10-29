@@ -24,13 +24,13 @@ Las pruebas necesitan Docker en ejecución (PostgreSQL real con Testcontainers).
 
 - **Feature `category`:** `GET /api/professional-categories`, con `@RequiresCatalogReady`. Su puerto también ofrece la escritura que usa la sincronización. Es la feature de referencia para las siguientes.
 - **`shared/infrastructure/config`:** `JwtConfig` (valida el JWT con la clave pública), `SecurityConfig` (reglas de acceso y CORS), `CatedraRestClientConfig` (cliente HTTP de la cátedra, con JWT técnico y timeouts) y `CatedraIntegrationConfig` (pide la integración al arrancar; sin ella, no arranca).
-- **Feature `professional`:** por ahora solo la escritura de profesionales y horarios (`ProfessionalRepository`, `WeeklyScheduleRepository`): guardar por id y borrar todo. Los horarios viven acá porque solo los usan la búsqueda y la agenda.
+- **Feature `professional`:** la escritura de profesionales y horarios que usa la sincronización (`ProfessionalRepository`, `WeeklyScheduleRepository`), y `GET /api/professionals` con categoría, nombre, habilitado, disponibilidad de agenda y paginación. El habilitado efectivo (ADR-0014) está escrito una vez, en `Professional.isEffectivelyEnabled`, y el filtro de la base aplica la misma regla con los ids de las categorías habilitadas. Los filtros son `Specification` de Spring Data que el adaptador combina; el nombre usa la extensión `unaccent` (migración `V3`). La categoría de cada resultado se lee con el puerto de `category`, no con un JOIN (ADR-0062), en una transacción `REPEATABLE READ`. La disponibilidad es un `EXISTS` sobre los horarios del día; la fecha se limita a hoy..horizonte en hora de Argentina (ADR-0065, `AvailabilityHorizon` + `Clock`) y responde `400 DATE_OUT_OF_RANGE`. `GET /api/professionals/{id}/agenda` (ADR-0017) lee el profesional, su categoría, sus horarios habilitados y la versión de `sync` (por `SyncStateRepository`) en una transacción `REPEATABLE READ`; los horarios se ordenan en Java por `DayOfWeek`. Los horarios viven acá porque solo los usan la búsqueda y la agenda.
 - **Feature `sync`:** `SynchronizeCatalogUseCase` (CU-01; por ahora, sin versión local hace el snapshot del CU-02) y `ClearInterruptedSyncUseCase`. Los disparan `CatalogSyncStartupListener` al arrancar y `CatalogSyncScheduler` cada `catalogo.sync.check-interval` (ADR-0006). Solo las escrituras van en la transacción (`TransactionOperations`): el pedido a la cátedra queda antes y el registro del error, después. La versión avanza con un `UPDATE` condicionado a la versión esperada (ADR-0007). En la M5 se le suma la decisión con Redis al mismo caso de uso, sin tocar los disparadores. También expone `GET /api/catalog/sync-status` y hace cumplir `@RequiresCatalogReady` con `CatalogReadyInterceptor`: sin versión local, 503 `CATALOG_NOT_READY` antes de entrar al controller.
 - **`shared/infrastructure/web/advice`:** `GlobalExceptionHandler`.
 - **`shared/infrastructure/rest`:** `CatedraReadExecutor`, la lectura a la cátedra con un reintento y mensajes seguros. Todo cliente REST de la cátedra la usa. La tabla de qué hay en `shared` y quién lo usa está en el README.
-- **Migraciones:** `V1` con las tablas `professional_category`, `professional` y `weekly_schedule`; `V2` con `sync_state`, una sola fila (`id = 1`) que crea la propia migración.
+- **Migraciones:** `V1` con las tablas `professional_category`, `professional` y `weekly_schedule`; `V2` con `sync_state`, una sola fila (`id = 1`) que crea la propia migración; `V3` con la extensión `unaccent`.
 
-Todavía no hay: sincronización incremental (Redis, Kafka), la tabla `PROCESSED_EVENT`, la búsqueda de profesionales ni la agenda. Tampoco HTTPS (ADR-0035).
+Todavía no hay: sincronización incremental (Redis, Kafka) ni la tabla `PROCESSED_EVENT`. Tampoco HTTPS (ADR-0035).
 
 ## Lo propio de este servicio
 
@@ -92,6 +92,9 @@ Spring Boot 4, Spring Security 7 y Jackson 3 cambiaron cosas respecto de version
 - **Clientes de la cátedra:** sin Spring, contra `FakeCatedra` (WireMock en un contenedor). Las respuestas se programan por la API de administración de WireMock; la librería de WireMock no está en el proyecto (su Jetty choca con Spring Boot 4).
 - **Adaptador de persistencia:** `@DataJpaTest` + `@AutoConfigureTestDatabase(replace = NONE)` + `@Import` de `TestcontainersConfiguration`, el adaptador y su mapper. Para leer de verdad de PostgreSQL hay que hacer `flush()` y `clear()` antes: sin eso JPA responde desde memoria, y los errores de restricciones de una colección no aparecen.
 - **Casos de uso y fachada:** JUnit y Mockito, sin Spring. La hora llega por un `Clock` inyectado (`ClockConfig`), que la prueba fija.
+- **Recorridos completos que dependen de "hoy":** importan además `TestClockConfiguration`, que fija el reloj de la aplicación (martes 2026-10-20, 12 h de Argentina). Nunca `LocalDate.now()` en una prueba. El JWT se valida con la hora del sistema, no con ese reloj.
+
+**Parámetros de una lista.** Spring parte por comas un parámetro que se guarda en una lista: `sort=lastName,desc` llegaría como dos valores. `ProfessionalController` lo evita con un `@InitBinder`. En MockMvc, `.param()` no arma el query string; si la prueba mira los enlaces de `Link`, la URL va con los parámetros escritos.
 
 **Jackson 3.** Un campo primitivo (`boolean`, `int`) que no viene en el JSON hace fallar el pedido con 400. Un campo opcional de un DTO de entrada va con su tipo envoltorio (`Boolean`, `Integer`).
 
@@ -101,7 +104,7 @@ Spring Boot 4, Spring Security 7 y Jackson 3 cambiaron cosas respecto de version
 - Los 401 y 403 que genera la seguridad no tienen cuerpo: traen el encabezado `WWW-Authenticate`. Es lo acordado en el contrato.
 - Una ruta inexistente sin token da 401, no 404, porque todo está protegido por defecto.
 
-**Errores.** `GlobalExceptionHandler` tiene un manejador genérico de `Exception` que responde 500. La excepción de cada feature necesita su propio manejador ahí, o termina como 500. `ProblemDetail` agrega solo el campo `instance`; el `code`, el `path` y los `fieldErrors` del contrato se agregan con `setProperty`.
+**Errores.** `GlobalExceptionHandler` tiene un manejador genérico de `Exception` que responde 500. La excepción de cada feature necesita su propio manejador ahí, o termina como 500. `ProblemDetail` agrega solo el campo `instance`; el `code`, el `path` y los `fieldErrors` del contrato se agregan con `setProperty`. Todo 400 sin código propio (los que arma Spring: JSON mal formado, tipo inválido, parámetro que falta) sale como `VALIDATION_ERROR`: el contrato solo exime de `code` a los 401 y 403.
 
 **Base de datos.** El esquema lo define Flyway; Hibernate solo valida (`ddl-auto: validate`). Una migración ya mergeada no se edita: el cambio va en la siguiente (`V2__...`). Los nombres de columnas se derivan solos de los campos de la entity (`createdAt` es `created_at`).
 

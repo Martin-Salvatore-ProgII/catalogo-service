@@ -1,6 +1,7 @@
 package com.example.catalogo.category.infrastructure.persistence.adapter;
 
 import java.util.List;
+import java.util.Optional;
 
 import com.example.catalogo.category.domain.model.Category;
 import com.example.catalogo.category.domain.ports.out.CategoryRepository;
@@ -19,6 +20,18 @@ public class JpaCategoryRepositoryAdapter implements CategoryRepository {
 	@Override
 	public List<Category> findAllEnabledOrderedByName() {
 		return jpaCategoryRepository.findAllByEnabledTrueOrderByNameAsc().stream()
+				.map(categoryMapper::toDomainModel)
+				.toList();
+	}
+
+	@Override
+	public Optional<Category> findById(Long id) {
+		return jpaCategoryRepository.findById(id).map(categoryMapper::toDomainModel);
+	}
+
+	@Override
+	public List<Category> findAll() {
+		return jpaCategoryRepository.findAll().stream()
 				.map(categoryMapper::toDomainModel)
 				.toList();
 	}
