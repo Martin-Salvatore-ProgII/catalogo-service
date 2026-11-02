@@ -120,7 +120,9 @@ Lo que sirve a más de una feature se lleva a `shared` en cuanto aparece el segu
 | `config/CatedraRestClientConfig` | Cliente HTTP de la cátedra, con el JWT técnico y los timeouts | Integración al arrancar, `sync` (snapshot) |
 | `rest/CatedraReadExecutor` | Lectura a la cátedra con un reintento (ADR-0029) y mensajes de falla sin su dirección | Integración al arrancar, `sync` (snapshot) |
 | `rest/NoRetryRequestFactory` | La conexión HTTP del cliente de la cátedra: timeouts configurados y sin reintentos propios (ADR-0029) | `CatedraRestClientConfig` |
-| `config/CatedraIntegrationConfig` | Pide la integración al arrancar; sin ella, el servicio no arranca (ADR-0005) | Redis y Kafka, desde la M5 |
+| `config/CatedraIntegrationConfig` | Pide la integración al arrancar; sin ella, el servicio no arranca (ADR-0005) | `RedisConfig`, `KafkaConfig` |
+| `config/RedisConfig` | Conexión de solo lectura al Redis de la cátedra, armada con la integración, con los timeouts de la cátedra y sin encolar comandos si la conexión cae | `sync` (lectura de versiones, cambios y entidades) |
+| `config/KafkaConfig` | Consumidor del Kafka de la cátedra, armado con la integración: texto crudo, ack manual, sin commit automático | `sync` (aviso `CatalogUpdated`) |
 | `config/JwtConfig`, `config/SecurityConfig` | Validación del JWT de usuario y reglas de acceso | Todos los endpoints |
 | `web/advice/GlobalExceptionHandler` | Errores `problem+json` | Todos los endpoints |
 | `web/catalog/RequiresCatalogReady` | Marca un endpoint que responde con la copia local: sin versión local, 503 `CATALOG_NOT_READY`. La hace cumplir `sync` | `category`, `professional` (búsqueda y agenda) |
