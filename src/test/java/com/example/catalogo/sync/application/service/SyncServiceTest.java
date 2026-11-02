@@ -12,9 +12,9 @@ import com.example.catalogo.sync.application.exception.CatalogNotReadyException;
 import com.example.catalogo.sync.domain.model.SyncState;
 import com.example.catalogo.sync.domain.ports.in.ClearInterruptedSyncUseCase;
 import com.example.catalogo.sync.domain.ports.in.GetSyncStatusUseCase;
+import com.example.catalogo.sync.domain.ports.in.HandleCatalogUpdatedUseCase;
 import com.example.catalogo.sync.domain.ports.in.IsCatalogReadyUseCase;
 import com.example.catalogo.sync.domain.ports.in.PurgeProcessedEventsUseCase;
-import com.example.catalogo.sync.domain.ports.in.RegisterProcessedEventUseCase;
 import com.example.catalogo.sync.domain.ports.in.SynchronizeCatalogUseCase;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,7 +38,7 @@ class SyncServiceTest {
 	private GetSyncStatusUseCase getSyncStatusUseCase;
 
 	@Mock
-	private RegisterProcessedEventUseCase registerProcessedEventUseCase;
+	private HandleCatalogUpdatedUseCase handleCatalogUpdatedUseCase;
 
 	@Mock
 	private PurgeProcessedEventsUseCase purgeProcessedEventsUseCase;
@@ -83,10 +83,10 @@ class SyncServiceTest {
 	}
 
 	@Test
-	void registersAProcessedEventThroughTheUseCase() {
-		when(registerProcessedEventUseCase.registerProcessedEvent("evento-1")).thenReturn(true);
+	void handlesACatalogUpdatedNoticeThroughTheUseCase() {
+		syncService.handleCatalogUpdated("evento-1");
 
-		assertThat(syncService.registerProcessedEvent("evento-1")).isTrue();
+		verify(handleCatalogUpdatedUseCase).handleCatalogUpdated("evento-1");
 	}
 
 	@Test

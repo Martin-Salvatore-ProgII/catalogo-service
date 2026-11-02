@@ -50,19 +50,19 @@ public final class FakeCatedra {
 
 	/**
 	 * Contenedor que ya arranca respondiendo como la cátedra real: la integración en estado
-	 * PROVISIONED, con Redis en el servidor indicado, y el snapshot real.
+	 * PROVISIONED, con Redis y Kafka en los servidores indicados, y el snapshot real.
 	 */
-	public static GenericContainer<?> newContainerLikeTheCatedra(String redisHost, int redisPort) {
+	public static GenericContainer<?> newContainerLikeTheCatedra(String redisHost, int redisPort, String kafkaBootstrapServers) {
 		return newContainer()
-				.withCopyToContainer(Transferable.of(integrationMapping(redisHost, redisPort)), MAPPINGS_DIR + "integration.json")
+				.withCopyToContainer(Transferable.of(integrationMapping(redisHost, redisPort, kafkaBootstrapServers)), MAPPINGS_DIR + "integration.json")
 				.withCopyToContainer(Transferable.of(snapshotMapping(readResource(SNAPSHOT))), MAPPINGS_DIR + "snapshot.json");
 	}
 
-	/** La respuesta de la integración (resources/catedra/integration.json) con el Redis dado. */
-	public static String integrationMapping(String redisHost, int redisPort) {
+	/** La respuesta de la integración (resources/catedra/integration.json) con el Redis y el Kafka dados. */
+	public static String integrationMapping(String redisHost, int redisPort, String kafkaBootstrapServers) {
 		ObjectNode mapping = (ObjectNode) JSON.readTree(readResource(INTEGRATION_MAPPING));
 		ObjectNode integration = (ObjectNode) mapping.get("response").get("jsonBody");
-		integration.put("redisHost", redisHost).put("redisPort", redisPort);
+		integration.put("redisHost", redisHost).put("redisPort", redisPort).put("kafkaBootstrapServers", kafkaBootstrapServers);
 		return mapping.toString();
 	}
 
