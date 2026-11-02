@@ -1,4 +1,4 @@
-package com.example.catalogo.sync.infrastructure.rest.dto;
+package com.example.catalogo.sync.infrastructure.catedra.dto;
 
 import java.time.Instant;
 
@@ -15,7 +15,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class ProfessionalSnapshotDto {
+public class CatedraProfessionalDto {
 	private Long id;
 	private Long categoryId;
 	private String firstName;
