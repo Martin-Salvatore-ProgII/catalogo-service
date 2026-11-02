@@ -12,7 +12,6 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.images.builder.Transferable;
-import org.testcontainers.utility.MountableFile;
 import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.node.ObjectNode;
 
@@ -51,12 +50,20 @@ public final class FakeCatedra {
 
 	/**
 	 * Contenedor que ya arranca respondiendo como la cátedra real: la integración en estado
-	 * PROVISIONED y el snapshot real.
+	 * PROVISIONED, con Redis en el servidor indicado, y el snapshot real.
 	 */
-	public static GenericContainer<?> newContainerLikeTheCatedra() {
+	public static GenericContainer<?> newContainerLikeTheCatedra(String redisHost, int redisPort) {
 		return newContainer()
-				.withCopyFileToContainer(MountableFile.forClasspathResource(INTEGRATION_MAPPING), MAPPINGS_DIR + "integration.json")
+				.withCopyToContainer(Transferable.of(integrationMapping(redisHost, redisPort)), MAPPINGS_DIR + "integration.json")
 				.withCopyToContainer(Transferable.of(snapshotMapping(readResource(SNAPSHOT))), MAPPINGS_DIR + "snapshot.json");
+	}
+
+	/** La respuesta de la integración (resources/catedra/integration.json) con el Redis dado. */
+	public static String integrationMapping(String redisHost, int redisPort) {
+		ObjectNode mapping = (ObjectNode) JSON.readTree(readResource(INTEGRATION_MAPPING));
+		ObjectNode integration = (ObjectNode) mapping.get("response").get("jsonBody");
+		integration.put("redisHost", redisHost).put("redisPort", redisPort);
+		return mapping.toString();
 	}
 
 	/** Respuesta 200 de {@code GET /api/synchronization/snapshot} con el cuerpo dado. */
