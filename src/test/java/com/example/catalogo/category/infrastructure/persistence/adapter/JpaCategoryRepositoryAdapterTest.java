@@ -169,4 +169,12 @@ class JpaCategoryRepositoryAdapterTest {
 		entityManager.clear();
 	}
 
+	@Test
+	void answersWhichOfTheRequestedIdsAlreadyExist() {
+		store(101L, "Cardiologia", true);
+		store(108L, "Salud mental", false);
+
+		assertThat(adapter.findExistingIds(List.of(101L, 108L, 999L))).containsExactlyInAnyOrder(101L, 108L);
+		assertThat(adapter.findExistingIds(List.of())).isEmpty();
+	}
 }

@@ -1,10 +1,14 @@
 package com.example.catalogo.category.infrastructure.persistence.adapter;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.example.catalogo.category.domain.model.Category;
 import com.example.catalogo.category.domain.ports.out.CategoryRepository;
+import com.example.catalogo.category.infrastructure.persistence.entity.CategoryEntity;
 import com.example.catalogo.category.infrastructure.persistence.mapper.CategoryMapper;
 import com.example.catalogo.category.infrastructure.persistence.repository.JpaCategoryRepository;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +51,11 @@ public class JpaCategoryRepositoryAdapter implements CategoryRepository {
 	@Override
 	public void deleteAll() {
 		jpaCategoryRepository.deleteAllInBatch();
+	}
+
+	@Override
+	public Set<Long> findExistingIds(Collection<Long> ids) {
+		return jpaCategoryRepository.findAllById(ids).stream().map(CategoryEntity::getId).collect(Collectors.toSet());
 	}
 
 }

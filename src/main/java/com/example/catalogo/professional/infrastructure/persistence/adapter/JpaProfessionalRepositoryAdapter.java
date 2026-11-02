@@ -1,8 +1,11 @@
 package com.example.catalogo.professional.infrastructure.persistence.adapter;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.example.catalogo.professional.domain.model.PageQuery;
 import com.example.catalogo.professional.domain.model.PageResult;
@@ -11,6 +14,7 @@ import com.example.catalogo.professional.domain.model.ProfessionalSearchCriteria
 import com.example.catalogo.professional.domain.model.ProfessionalSortField;
 import com.example.catalogo.professional.domain.model.ProfessionalSortOrder;
 import com.example.catalogo.professional.domain.ports.out.ProfessionalRepository;
+import com.example.catalogo.professional.infrastructure.persistence.entity.ProfessionalEntity;
 import com.example.catalogo.professional.infrastructure.persistence.entity.ProfessionalEntity;
 import com.example.catalogo.professional.infrastructure.persistence.mapper.ProfessionalMapper;
 import com.example.catalogo.professional.infrastructure.persistence.repository.JpaProfessionalRepository;
@@ -98,6 +102,11 @@ public class JpaProfessionalRepositoryAdapter implements ProfessionalRepository 
 	@Override
 	public void deleteAll() {
 		jpaProfessionalRepository.deleteAllInBatch();
+	}
+
+	@Override
+	public Set<Long> findExistingIds(Collection<Long> ids) {
+		return jpaProfessionalRepository.findAllById(ids).stream().map(ProfessionalEntity::getId).collect(Collectors.toSet());
 	}
 
 }
