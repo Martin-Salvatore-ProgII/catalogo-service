@@ -29,6 +29,9 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
 	private static final String VALIDATION_ERROR = "VALIDATION_ERROR";
+	// Un valor que no se pudo convertir ("abc" donde va una fecha). El mensaje de Spring nombra clases
+	// internas de Java, que no le sirven al cliente y no se exponen.
+	private static final String INVALID_FORMAT = "has an invalid format";
 	private static final String CATALOG_NOT_READY = "CATALOG_NOT_READY";
 	private static final String DATE_OUT_OF_RANGE = "DATE_OUT_OF_RANGE";
 	private static final String PROFESSIONAL_NOT_FOUND = "PROFESSIONAL_NOT_FOUND";
@@ -40,7 +43,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 				.map(error -> FieldErrorResponse.builder()
 						.objectName(error.getObjectName())
 						.field(error.getField())
-						.message(error.getDefaultMessage())
+						.message(error.isBindingFailure() ? INVALID_FORMAT : error.getDefaultMessage())
 						.build())
 				.toList();
 		ProblemDetail problem = ex.getBody();
@@ -90,7 +93,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, "Invalid value for " + field);
 		problem.setProperty("fieldErrors", List.of(FieldErrorResponse.builder()
 				.field(field)
-				.message("has an invalid format")
+				.message(INVALID_FORMAT)
 				.build()));
 		return handleExceptionInternal(ex, problem, headers, status, request);
 	}

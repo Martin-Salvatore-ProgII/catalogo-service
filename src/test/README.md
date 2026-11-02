@@ -2,11 +2,11 @@
 
 ## Requisito: Docker en ejecución
 
-Las pruebas usan PostgreSQL real, no una base en memoria (ADR-0045). Al correrlas, Testcontainers levanta un contenedor `postgres:18` descartable, le aplica las migraciones de Flyway y lo elimina al terminar. La cátedra también se simula en un contenedor, con WireMock (`wiremock/wiremock`): ninguna prueba habla con la cátedra real (ADR-0044).
+Las pruebas usan PostgreSQL real, no una base en memoria (ADR-0045). Al correrlas, Testcontainers levanta un contenedor `postgres:18` descartable, le aplica las migraciones de Flyway y lo elimina al terminar. La cátedra también se simula: su API REST con WireMock (`wiremock/wiremock`), su Redis con un contenedor `redis` que tiene la ACL de solo lectura de la REF §14.1, y su Kafka con un contenedor `apache/kafka` (uno solo para toda la ejecución). Ninguna prueba habla con la cátedra real (ADR-0044).
 
 Por eso **Docker tiene que estar corriendo** en la máquina. No hace falta levantar nada a mano ni definir variables de entorno: el contenedor y la conexión los maneja el propio test. Si Docker no está disponible, las pruebas que levantan el contexto de Spring fallan al iniciar.
 
-La primera ejecución descarga las imágenes de PostgreSQL y WireMock, y tarda más.
+La primera ejecución descarga las imágenes de PostgreSQL, WireMock, Redis y Kafka, y tarda más.
 
 ## Cómo ejecutarlas
 
@@ -30,10 +30,12 @@ Para correr una sola clase:
 | `ArchitectureTest` | Verifica la regla de dependencias de la arquitectura hexagonal (ADR-0053) y que una feature solo use el `domain` de otra (ADR-0062) | No |
 | `TestcontainersConfiguration` | Declara el contenedor de PostgreSQL que usan las pruebas. Se importa con `@Import` en cada prueba que necesite base | — |
 | `TestJwtKeysConfiguration` | Hace el papel de turnos: genera en memoria un par de claves RSA, le da la pública al servicio y permite firmar tokens de prueba. No hay ninguna clave en el repositorio | — |
-| `TestCatedraConfiguration` | Le da a la aplicación una cátedra falsa que responde como la real: la integración en estado `PROVISIONED` y el snapshot real. Toda prueba con `@SpringBootTest` la importa, y su contexto arranca con el catálogo real cargado | — |
+| `TestCatedraConfiguration` | Le da a la aplicación una cátedra falsa que responde como la real: la integración en estado `PROVISIONED` (con la dirección del Redis y del Kafka de prueba) y el snapshot real, más un Redis con ese mismo catálogo en la versión 1. Toda prueba con `@SpringBootTest` la importa, y su contexto arranca con el catálogo real cargado | — |
 | `TestClockConfiguration` | Fija el reloj de la aplicación completa en el martes 2026-10-20 a las 12 de Argentina, para las pruebas que dependen de "hoy" | — |
 | `CatalogTables` | Vacía las tablas del catálogo (y vuelve el estado de sincronización al inicial) para las pruebas con la aplicación completa que necesitan sus propios datos | — |
 | `FakeCatedra` | Arma el contenedor de WireMock y le programa respuestas por su API de administración (incluidas demoras, cortes de conexión y escenarios). La respuesta de la integración está en `resources/catedra/integration.json`; la del snapshot, en `resources/catedra/snapshot.json`, una copia de un snapshot real de la cátedra | — |
+| `FakeRedis` | Un Redis real con el usuario y la ACL de la cátedra, y ayudas para publicar en él con el formato de la REF §14 (hashes de entidades, `changes:{v}`, versiones). Los datos son los del snapshot real | — |
+| `FakeKafka` | Un Kafka real compartido por toda la ejecución, con ayudas para publicar un aviso y para ver qué offset confirmó el consumidor | — |
 | `TestCatalogoApplication` | No es una prueba: levanta la aplicación con una base descartable para probarla a mano | Sí |
 
 ## Pruebas por tema
@@ -62,10 +64,18 @@ Las pruebas siguen la estructura de paquetes del código: cada clase se prueba e
 | Búsqueda de profesionales con la aplicación completa: 401 sin token, nombre sin tildes, filtros combinados, por defecto solo habilitados, deshabilitados marcados, disponibilidad con franja, fecha pasada, página y total, filtro inválido; agenda con 401, horarios habilitados en orden, versión local, categoría deshabilitada y 404 | `professional/ProfessionalSearchAccessTest` | Sí |
 | Convención de paginación: enlaces `Link` en cada posición de página, total, máximo configurable | `shared/infrastructure/web/pagination/*Test` | No |
 | Sincronización desde el snapshot de punta a punta: carga al arrancar con la base vacía, no repite con versión local, y una referencia inconsistente deja la copia anterior intacta y registra el error | `sync/CatalogSnapshotSyncTest` | Sí |
-| Reglas del ciclo de sincronización: cuándo se pide el snapshot, el orden de borrado y guardado, el pedido fuera de la transacción, otro ciclo que ganó, errores de la cátedra y propios | `sync/application/usecases/*Test` | No |
+| Reglas del ciclo de sincronización: la tabla de situaciones de `sincronizacion.md` (al día, incremental, L < O, L > C, versión no verificable), un solo snapshot por ciclo, el orden de borrado y guardado, el pedido fuera de la transacción, otro ciclo que ganó, errores de Redis, de la cátedra y propios | `sync/application/usecases/*Test` | No |
 | Estado de sincronización y catálogo no listo con la aplicación completa: el snapshot del arranque, 401 sin token, 503 `CATALOG_NOT_READY` en categorías sin versión local y `sync-status` respondiendo igual | `sync/CatalogReadinessAccessTest` | Sí |
 | Respuesta HTTP del estado de sincronización: todos los campos, los vacíos en `null`, responde aunque el catálogo no esté listo | `sync/infrastructure/web/controller/SyncControllerTest` | No |
 | Disparador del arranque: borra la marca de una caída antes de sincronizar | `sync/infrastructure/startup/CatalogSyncStartupListenerTest` | No |
+| Cliente de Redis contra un Redis real con la ACL de la cátedra: versiones, cambios de una versión, entidades por lote, deshabilitadas, horas `HH:mm`, lo ausente o ilegible, solo lectura y falla sin mostrar la dirección | `sync/infrastructure/redis/adapter/RedisCatalogAdapterTest` | Sí |
+| Configuración de Redis y Kafka tomada de la integración: servidores, grupo, credenciales, timeouts, ack manual | `shared/infrastructure/config/RedisConfigTest`, `KafkaConfigTest` | No |
+| Aplicar una versión incremental: guardar y avanzar en una transacción, referencias que faltan (ADR-0009), lo no verificable, otro ciclo que ganó | `sync/application/usecases/IncrementalVersionApplierTest` | No |
+| Aviso `CatalogUpdated`: deduplicación por `eventId`, aviso ilegible que igual sincroniza, lectura del mensaje, offset confirmado al final aunque falle | `sync/application/usecases/HandleCatalogUpdatedUseCaseImplTest`, `sync/infrastructure/kafka/*/*Test` | No |
+| El consumidor con un Kafka real: el aviso llega a la fachada y el offset se confirma después, también con un aviso mal formado o una falla al procesarlo | `sync/CatalogUpdatedKafkaTest` | Sí |
+| Registro de avisos procesados en PostgreSQL: duplicado reconocido, diez iguales a la vez y uno solo gana (ADR-0070), purga por antigüedad | `sync/infrastructure/persistence/adapter/JpaProcessedEventRepositoryAdapterTest` | Sí |
+| Chequeo periódico: sincroniza y después purga | `sync/infrastructure/scheduler/CatalogSyncSchedulerTest` | No |
+| **Sincronización de punta a punta (§11):** actualización incremental por aviso, aviso duplicado ignorado y recuperado por el chequeo periódico, versión perdida, recuperación por snapshot (versión fuera del historial y discontinuidad), error con la copia intacta | `sync/CatalogIncrementalSyncTest` | Sí |
 | Estado de sincronización en PostgreSQL: fila inicial, avance solo desde la versión esperada (ADR-0007), fallas que no tocan la versión, marca de sincronización en curso | `sync/infrastructure/persistence/adapter/JpaSyncStateRepositoryAdapterTest` | Sí |
 | Esquema y restricciones de la base, incluida la fila única de `sync_state` | `DatabaseMigrationTest` | Sí |
 

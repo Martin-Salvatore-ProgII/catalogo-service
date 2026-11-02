@@ -1,10 +1,14 @@
 package com.example.catalogo.sync.application.service;
 
+import java.time.Duration;
+
 import com.example.catalogo.sync.application.exception.CatalogNotReadyException;
 import com.example.catalogo.sync.domain.model.SyncState;
 import com.example.catalogo.sync.domain.ports.in.ClearInterruptedSyncUseCase;
 import com.example.catalogo.sync.domain.ports.in.GetSyncStatusUseCase;
+import com.example.catalogo.sync.domain.ports.in.HandleCatalogUpdatedUseCase;
 import com.example.catalogo.sync.domain.ports.in.IsCatalogReadyUseCase;
+import com.example.catalogo.sync.domain.ports.in.PurgeProcessedEventsUseCase;
 import com.example.catalogo.sync.domain.ports.in.SynchronizeCatalogUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,6 +21,8 @@ public class SyncService {
 	private final ClearInterruptedSyncUseCase clearInterruptedSyncUseCase;
 	private final IsCatalogReadyUseCase isCatalogReadyUseCase;
 	private final GetSyncStatusUseCase getSyncStatusUseCase;
+	private final HandleCatalogUpdatedUseCase handleCatalogUpdatedUseCase;
+	private final PurgeProcessedEventsUseCase purgeProcessedEventsUseCase;
 
 	public void synchronizeCatalog() {
 		synchronizeCatalogUseCase.synchronizeCatalog();
@@ -36,6 +42,14 @@ public class SyncService {
 
 	public SyncState getSyncStatus() {
 		return getSyncStatusUseCase.getSyncStatus();
+	}
+
+	public void handleCatalogUpdated(String eventId) {
+		handleCatalogUpdatedUseCase.handleCatalogUpdated(eventId);
+	}
+
+	public int purgeProcessedEvents(Duration retention) {
+		return purgeProcessedEventsUseCase.purgeProcessedEvents(retention);
 	}
 
 }

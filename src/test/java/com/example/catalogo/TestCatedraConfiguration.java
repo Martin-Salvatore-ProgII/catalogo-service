@@ -14,9 +14,20 @@ import org.testcontainers.containers.GenericContainer;
 @TestConfiguration(proxyBeanMethods = false)
 public class TestCatedraConfiguration {
 
+	// El Redis de la cátedra, con el mismo catálogo que publica el snapshot, en la versión 1 (como la
+	// cátedra real). Se levanta antes que la cátedra falsa, que anuncia su dirección en la integración.
 	@Bean
-	public GenericContainer<?> catedraContainer() {
-		return FakeCatedra.newContainerLikeTheCatedra();
+	public GenericContainer<?> redisContainer() {
+		GenericContainer<?> redis = FakeRedis.newContainer();
+		redis.start();
+		FakeRedis.publishSnapshotAsVersion(FakeRedis.templateFor(redis), 1);
+		return redis;
+	}
+
+	@Bean
+	public GenericContainer<?> catedraContainer(GenericContainer<?> redisContainer) {
+		return FakeCatedra.newContainerLikeTheCatedra(
+				redisContainer.getHost(), redisContainer.getMappedPort(6379), FakeKafka.bootstrapServers());
 	}
 
 	// Los valores se leen recién cuando Spring los pide, con el contenedor ya levantado.

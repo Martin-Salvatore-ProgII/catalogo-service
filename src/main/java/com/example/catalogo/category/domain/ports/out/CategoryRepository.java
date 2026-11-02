@@ -1,7 +1,9 @@
 package com.example.catalogo.category.domain.ports.out;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import com.example.catalogo.category.domain.model.Category;
 
@@ -18,6 +20,10 @@ public interface CategoryRepository {
 	// Todas, habilitadas o no. La usa la búsqueda de profesionales para completar la categoría de
 	// cada resultado (ADR-0064).
 	List<Category> findAll();
+
+	// Cuáles de esos ids ya están en la copia local. La sincronización incremental lo usa para saber
+	// qué categorías referenciadas faltan (ADR-0009, ADR-0062).
+	Set<Long> findExistingIds(Collection<Long> ids);
 
 	// Guarda por el id de la cátedra: crea las que no están y reemplaza las que ya están. La usa
 	// la sincronización para escribir la copia local (ADR-0062).

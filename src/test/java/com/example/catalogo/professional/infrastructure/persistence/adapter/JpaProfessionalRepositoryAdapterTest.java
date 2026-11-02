@@ -388,4 +388,12 @@ class JpaProfessionalRepositoryAdapterTest {
 		entityManager.clear();
 	}
 
+	@Test
+	void answersWhichOfTheRequestedIdsAlreadyExist() {
+		adapter.saveAll(List.of(professional(201L, 101L, "Ana", true), professional(202L, 102L, "Bruno", false)));
+		readFromDatabase();
+
+		assertThat(adapter.findExistingIds(List.of(201L, 202L, 999L))).containsExactlyInAnyOrder(201L, 202L);
+		assertThat(adapter.findExistingIds(List.of())).isEmpty();
+	}
 }

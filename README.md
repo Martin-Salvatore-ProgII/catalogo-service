@@ -6,7 +6,7 @@ Es uno de los tres repositorios de la entrega, junto con `turnos-service` y `app
 
 ## Estado
 
-Listado de categorías de profesionales (`GET /api/professional-categories`), búsqueda de profesionales por categoría, nombre, estado habilitado y disponibilidad de agenda, paginada (`GET /api/professionals`), agenda vigente de un profesional (`GET /api/professionals/{id}/agenda`), y estado de sincronización (`GET /api/catalog/sync-status`), con la seguridad activa: todo pedido exige un JWT de usuario válido emitido por `turnos-service`, salvo `/actuator/health`. Al arrancar obtiene de la cátedra la configuración de la integración y, si la base está vacía, carga el catálogo completo desde el snapshot de la cátedra. Un chequeo periódico reintenta si esa carga falló. Mientras no haya versión local, las categorías, la búsqueda y la agenda responden `503 CATALOG_NOT_READY`. Falta la sincronización incremental (Redis y Kafka).
+Listado de categorías de profesionales (`GET /api/professional-categories`), búsqueda de profesionales por categoría, nombre, estado habilitado y disponibilidad de agenda, paginada (`GET /api/professionals`), agenda vigente de un profesional (`GET /api/professionals/{id}/agenda`), y estado de sincronización (`GET /api/catalog/sync-status`), con la seguridad activa: todo pedido exige un JWT de usuario válido emitido por `turnos-service`, salvo `/actuator/health`. Al arrancar obtiene de la cátedra la configuración de la integración y, si la base está vacía, carga el catálogo completo desde el snapshot de la cátedra. Después se mantiene al día: cada aviso `CatalogUpdated` de Kafka, el arranque y un chequeo periódico comparan la versión local con las de Redis y aplican las versiones pendientes una por una, o reconstruyen la copia desde el snapshot si falta historial (`docs/arq/sincronizacion.md`). Mientras no haya versión local, las categorías, la búsqueda y la agenda responden `503 CATALOG_NOT_READY`.
 
 ## Requisitos
 
@@ -40,7 +40,7 @@ En el `.env` van solo la URL base y el JWT técnico. Redis, Kafka y sus topics n
 
 Los timeouts hacia la cátedra tienen un valor inicial de 2 segundos para conectar y 5 para la respuesta (ADR-0029). Se pueden cambiar con `CATALOGO_CATEDRA_CONNECT_TIMEOUT` y `CATALOGO_CATEDRA_READ_TIMEOUT` (por ejemplo, `3s`).
 
-El chequeo periódico de sincronización corre cada 5 minutos (ADR-0006). Se cambia con `CATALOGO_SYNC_CHECK_INTERVAL` (por ejemplo, `1m`).
+El chequeo periódico de sincronización corre cada 5 minutos (ADR-0006). Se cambia con `CATALOGO_SYNC_CHECK_INTERVAL` (por ejemplo, `1m`). En el mismo momento se purgan los `eventId` de avisos procesados de más de 7 días (ADR-0008); se cambia con `CATALOGO_SYNC_PROCESSED_EVENT_RETENTION`.
 
 ### Clave pública del JWT de usuario
 
@@ -119,7 +119,10 @@ Lo que sirve a más de una feature se lleva a `shared` en cuanto aparece el segu
 | --- | --- | --- |
 | `config/CatedraRestClientConfig` | Cliente HTTP de la cátedra, con el JWT técnico y los timeouts | Integración al arrancar, `sync` (snapshot) |
 | `rest/CatedraReadExecutor` | Lectura a la cátedra con un reintento (ADR-0029) y mensajes de falla sin su dirección | Integración al arrancar, `sync` (snapshot) |
-| `config/CatedraIntegrationConfig` | Pide la integración al arrancar; sin ella, el servicio no arranca (ADR-0005) | Redis y Kafka, desde la M5 |
+| `rest/NoRetryRequestFactory` | La conexión HTTP del cliente de la cátedra: timeouts configurados y sin reintentos propios (ADR-0029) | `CatedraRestClientConfig` |
+| `config/CatedraIntegrationConfig` | Pide la integración al arrancar; sin ella, el servicio no arranca (ADR-0005) | `RedisConfig`, `KafkaConfig` |
+| `config/RedisConfig` | Conexión de solo lectura al Redis de la cátedra, armada con la integración, con los timeouts de la cátedra y sin encolar comandos si la conexión cae | `sync` (lectura de versiones, cambios y entidades) |
+| `config/KafkaConfig` | Consumidor del Kafka de la cátedra, armado con la integración: texto crudo, ack manual, sin commit automático | `sync` (aviso `CatalogUpdated`) |
 | `config/JwtConfig`, `config/SecurityConfig` | Validación del JWT de usuario y reglas de acceso | Todos los endpoints |
 | `web/advice/GlobalExceptionHandler` | Errores `problem+json` | Todos los endpoints |
 | `web/catalog/RequiresCatalogReady` | Marca un endpoint que responde con la copia local: sin versión local, 503 `CATALOG_NOT_READY`. La hace cumplir `sync` | `category`, `professional` (búsqueda y agenda) |
