@@ -26,7 +26,8 @@ public class TestCatedraConfiguration {
 
 	@Bean
 	public GenericContainer<?> catedraContainer(GenericContainer<?> redisContainer) {
-		return FakeCatedra.newContainerLikeTheCatedra(redisContainer.getHost(), redisContainer.getMappedPort(6379));
+		return FakeCatedra.newContainerLikeTheCatedra(
+				redisContainer.getHost(), redisContainer.getMappedPort(6379), FakeKafka.bootstrapServers());
 	}
 
 	// Los valores se leen recién cuando Spring los pide, con el contenedor ya levantado.
