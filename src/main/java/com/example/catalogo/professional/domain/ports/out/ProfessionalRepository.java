@@ -1,7 +1,9 @@
 package com.example.catalogo.professional.domain.ports.out;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import com.example.catalogo.professional.domain.model.PageQuery;
 import com.example.catalogo.professional.domain.model.PageResult;
@@ -24,6 +26,10 @@ public interface ProfessionalRepository {
 
 	PageResult<Professional> search(ProfessionalSearchCriteria criteria, List<ProfessionalSortOrder> sort,
 			PageQuery page);
+
+	// Cuáles de esos ids ya están en la copia local. La sincronización incremental lo usa para saber
+	// qué profesionales referenciados faltan (ADR-0009, ADR-0062).
+	Set<Long> findExistingIds(Collection<Long> ids);
 
 	// Guarda por el id de la cátedra: crea los que no están y reemplaza los que ya están.
 	void saveAll(List<Professional> professionals);
