@@ -11,6 +11,19 @@ spring:
       ddl-auto: validate
     # La sesión de base se cierra al terminar el caso de uso, no al terminar la respuesta HTTP.
     open-in-view: false
+  data:
+    redis:
+      # Spring Data Redis también puede generar repositorios. Acá Redis solo se lee con un template
+      # (la cátedra es la dueña de esos datos), y así no se mezcla con los repositorios JPA.
+      repositories:
+        enabled: false
+
+management:
+  health:
+    redis:
+      # Un Redis de la cátedra caído no tiene que dejar al servicio como DOWN: las búsquedas se
+      # responden con la copia local y el error queda en el estado de sincronización (ADR-0011).
+      enabled: false
 
 catalogo:
   catedra:
