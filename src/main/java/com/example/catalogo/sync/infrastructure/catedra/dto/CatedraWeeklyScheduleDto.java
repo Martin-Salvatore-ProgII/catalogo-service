@@ -1,4 +1,4 @@
-package com.example.catalogo.sync.infrastructure.rest.dto;
+package com.example.catalogo.sync.infrastructure.catedra.dto;
 
 import java.time.DayOfWeek;
 import java.time.Instant;
@@ -17,7 +17,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class WeeklyScheduleSnapshotDto {
+public class CatedraWeeklyScheduleDto {
 	private Long id;
 	private Long professionalId;
 	// Un día que no sea uno de los siete del contrato hace ilegible la respuesta entera.
