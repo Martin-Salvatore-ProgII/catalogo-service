@@ -42,7 +42,8 @@ class DatabaseMigrationTest {
 				.query(String.class)
 				.list();
 
-		assertThat(tables).contains("professional_category", "professional", "weekly_schedule", "sync_state");
+		assertThat(tables).contains("professional_category", "professional", "weekly_schedule", "sync_state",
+				"processed_event");
 	}
 
 	@Test
@@ -127,6 +128,16 @@ class DatabaseMigrationTest {
 		assertThatThrownBy(() -> jdbcClient.sql("UPDATE sync_state SET last_success_type = 'FULL'").update())
 				.isInstanceOf(DataIntegrityViolationException.class)
 				.hasMessageContaining("ck_sync_state_last_success_type");
+	}
+
+	@Test
+	void rejectsRegisteringTheSameEventTwice() {
+		jdbcClient.sql("INSERT INTO processed_event (event_id, processed_at) VALUES ('evento-1', now())").update();
+
+		assertThatThrownBy(() -> jdbcClient
+				.sql("INSERT INTO processed_event (event_id, processed_at) VALUES ('evento-1', now())").update())
+				.isInstanceOf(DataIntegrityViolationException.class)
+				.hasMessageContaining("processed_event_pkey");
 	}
 
 	private void insertCategory(long id, String name, String description) {

@@ -39,6 +39,9 @@ catalogo:
     # Intervalo del chequeo periódico de sincronización (ADR-0006, RNF-09). Se puede cambiar con
     # la variable CATALOGO_SYNC_CHECK_INTERVAL.
     check-interval: 5m
+    # Cuánto se conservan los eventId de los avisos procesados antes de purgarlos en el chequeo
+    # periódico (ADR-0008, RNF-09). Se puede cambiar con CATALOGO_SYNC_PROCESSED_EVENT_RETENTION.
+    processed-event-retention: 7d
   pagination:
     # Tamaño de página por defecto y máximo de las listas (docs/arq/contratos.md, RNF-09). Se pueden
     # cambiar con CATALOGO_PAGINATION_DEFAULT_SIZE y CATALOGO_PAGINATION_MAX_SIZE.
