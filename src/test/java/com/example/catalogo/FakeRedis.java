@@ -23,8 +23,14 @@ public final class FakeRedis {
 	private FakeRedis() {
 	}
 
+	// El usuario de la cátedra de prueba (resources/catedra/integration.json), con la ACL de la REF
+	// §14.1: lee catedra:sync:* y solo escribe en su namespace. El usuario por defecto, sin clave,
+	// sigue existiendo: es el que usan las pruebas para cargar datos.
 	public static GenericContainer<?> newContainer() {
-		return new GenericContainer<>(DockerImageName.parse("redis:8")).withExposedPorts(6379);
+		return new GenericContainer<>(DockerImageName.parse("redis:8"))
+				.withExposedPorts(6379)
+				.withCommand("redis-server", "--user", "grp_proyecto-de-prueba", "on", ">clave-redis-de-prueba",
+						"%R~catedra:sync:*", "~alumnos:proyecto-de-prueba:*", "+@read", "+@write", "+@connection");
 	}
 
 	public static StringRedisTemplate templateFor(GenericContainer<?> container) {

@@ -21,11 +21,14 @@ import com.example.catalogo.professional.domain.model.Professional;
 import com.example.catalogo.professional.domain.model.WeeklySchedule;
 import com.example.catalogo.professional.domain.ports.out.ProfessionalRepository;
 import com.example.catalogo.professional.domain.ports.out.WeeklyScheduleRepository;
+import com.example.catalogo.sync.application.exception.CatalogChangesException;
 import com.example.catalogo.sync.application.exception.CatalogSnapshotException;
 import com.example.catalogo.sync.domain.model.CatalogSnapshot;
+import com.example.catalogo.sync.domain.model.CatalogVersions;
 import com.example.catalogo.sync.domain.model.SyncState;
 import com.example.catalogo.sync.domain.model.SyncType;
 import com.example.catalogo.sync.domain.ports.out.CatalogSnapshotPort;
+import com.example.catalogo.sync.domain.ports.out.CatalogVersionPort;
 import com.example.catalogo.sync.domain.ports.out.SyncStateRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -51,6 +54,10 @@ class SynchronizeCatalogUseCaseImplTest {
 	@Mock
 	private CatalogSnapshotPort catalogSnapshotPort;
 	@Mock
+	private CatalogVersionPort catalogVersionPort;
+	@Mock
+	private IncrementalVersionApplier incrementalVersionApplier;
+	@Mock
 	private CategoryRepository categoryRepository;
 	@Mock
 	private ProfessionalRepository professionalRepository;
@@ -63,18 +70,192 @@ class SynchronizeCatalogUseCaseImplTest {
 
 	@BeforeEach
 	void setUp() {
-		useCase = new SynchronizeCatalogUseCaseImpl(syncStateRepository, catalogSnapshotPort, categoryRepository,
-				professionalRepository, weeklyScheduleRepository, transaction, Clock.fixed(NOW, ZoneOffset.UTC));
+		useCase = new SynchronizeCatalogUseCaseImpl(syncStateRepository, catalogSnapshotPort, catalogVersionPort,
+				incrementalVersionApplier, categoryRepository, professionalRepository, weeklyScheduleRepository, transaction, Clock.fixed(NOW, ZoneOffset.UTC));
 	}
 
 	@Test
-	void doesNothingWhenThereIsAlreadyALocalVersion() {
+	void doesNothingWhenTheLocalVersionIsTheCurrentOne() {
 		givenLocalVersion(3L);
+		givenRedisVersions(1, 3);
 
 		useCase.synchronizeCatalog();
 
-		verifyNoInteractions(catalogSnapshotPort, categoryRepository, professionalRepository, weeklyScheduleRepository);
+		verifyNoInteractions(catalogSnapshotPort, incrementalVersionApplier, categoryRepository, professionalRepository,
+				weeklyScheduleRepository);
+		// Un chequeo que no encuentra nada nuevo no enciende la marca de "actualizándose".
 		verify(syncStateRepository, never()).markSyncStarted();
+		verify(syncStateRepository, never()).recordFailure(any(), any());
+	}
+
+	@Test
+	void appliesEachPendingVersionInOrderWhenTheHistoryIsContinuous() {
+		// L = 3, O = 2, C = 6 (sincronizacion.md: O <= L < C).
+		givenLocalVersion(3L);
+		givenRedisVersions(2, 6);
+		when(incrementalVersionApplier.apply(anyLong())).thenReturn(IncrementalVersionResult.APPLIED);
+
+		useCase.synchronizeCatalog();
+
+		InOrder order = inOrder(syncStateRepository, incrementalVersionApplier);
+		for (long version = 4; version <= 6; version++) {
+			order.verify(syncStateRepository).markSyncStarted();
+			order.verify(incrementalVersionApplier).apply(version);
+		}
+		verifyNoInteractions(catalogSnapshotPort);
+		verify(syncStateRepository, never()).recordFailure(any(), any());
+	}
+
+	@Test
+	void appliesFromTheOldestAvailableVersionWhenTheLocalOneIsRightBeforeIt() {
+		// L = O - 1 sería snapshot; L = O aplica desde O + 1.
+		givenLocalVersion(4L);
+		givenRedisVersions(4, 5);
+		when(incrementalVersionApplier.apply(5)).thenReturn(IncrementalVersionResult.APPLIED);
+
+		useCase.synchronizeCatalog();
+
+		verify(incrementalVersionApplier).apply(5);
+		verifyNoInteractions(catalogSnapshotPort);
+	}
+
+	@Test
+	void rebuildsFromTheSnapshotWhenTheLocalVersionIsOlderThanTheOldestAvailable() {
+		// REF §18.2: L = 3, O = 4, C = 7 no se aplica desde changes:4.
+		givenLocalVersion(3L);
+		when(catalogVersionPort.getVersions()).thenReturn(versions(4, 7), versions(7, 7));
+		CatalogSnapshot snapshot = snapshot(7L);
+		when(catalogSnapshotPort.getSnapshot()).thenReturn(snapshot);
+		when(syncStateRepository.recordSuccessIfVersionIs(3L, 7L, SyncType.SNAPSHOT, NOW)).thenReturn(true);
+
+		useCase.synchronizeCatalog();
+
+		verifyNoInteractions(incrementalVersionApplier);
+		verify(syncStateRepository).recordSuccessIfVersionIs(3L, 7L, SyncType.SNAPSHOT, NOW);
+		verify(syncStateRepository, never()).recordFailure(any(), any());
+	}
+
+	@Test
+	void rebuildsFromTheSnapshotWhenTheLocalVersionIsAheadOfTheCatedra() {
+		givenLocalVersion(9L);
+		when(catalogVersionPort.getVersions()).thenReturn(versions(1, 7), versions(7, 7));
+		when(catalogSnapshotPort.getSnapshot()).thenReturn(snapshot(7L));
+		when(syncStateRepository.recordSuccessIfVersionIs(9L, 7L, SyncType.SNAPSHOT, NOW)).thenReturn(true);
+
+		useCase.synchronizeCatalog();
+
+		verify(syncStateRepository).recordSuccessIfVersionIs(9L, 7L, SyncType.SNAPSHOT, NOW);
+	}
+
+	@Test
+	void rebuildsFromTheSnapshotFromTheLastAppliedVersionWhenOneCannotBeVerified() {
+		// ENUNCIADO §6.2: falta un dato de la versión 5. Hasta la 4 quedó aplicado.
+		givenLocalVersion(3L);
+		when(catalogVersionPort.getVersions()).thenReturn(versions(1, 6), versions(6, 6));
+		when(incrementalVersionApplier.apply(4)).thenReturn(IncrementalVersionResult.APPLIED);
+		when(incrementalVersionApplier.apply(5)).thenReturn(IncrementalVersionResult.UNVERIFIABLE);
+		when(catalogSnapshotPort.getSnapshot()).thenReturn(snapshot(6L));
+		when(syncStateRepository.recordSuccessIfVersionIs(4L, 6L, SyncType.SNAPSHOT, NOW)).thenReturn(true);
+
+		useCase.synchronizeCatalog();
+
+		verify(incrementalVersionApplier, never()).apply(6);
+		verify(syncStateRepository).recordSuccessIfVersionIs(4L, 6L, SyncType.SNAPSHOT, NOW);
+	}
+
+	@Test
+	void keepsApplyingIncrementallyWhenTheCatedraPublishedAfterTheSnapshot() {
+		// CU-02, paso 4: mientras se aplicaba el snapshot (versión 5) se publicó la 7.
+		givenLocalVersion(null);
+		when(catalogSnapshotPort.getSnapshot()).thenReturn(snapshot(5L));
+		when(syncStateRepository.recordSuccessIfVersionIs(null, 5L, SyncType.SNAPSHOT, NOW)).thenReturn(true);
+		givenRedisVersions(3, 7);
+		when(incrementalVersionApplier.apply(anyLong())).thenReturn(IncrementalVersionResult.APPLIED);
+
+		useCase.synchronizeCatalog();
+
+		verify(incrementalVersionApplier).apply(6);
+		verify(incrementalVersionApplier).apply(7);
+		verify(syncStateRepository, never()).recordFailure(any(), any());
+	}
+
+	@Test
+	void doesNotTakeASecondSnapshotWhenTheHistoryStillDoesNotCloseAfterTheFirst() {
+		givenLocalVersion(null);
+		when(catalogSnapshotPort.getSnapshot()).thenReturn(snapshot(5L));
+		when(syncStateRepository.recordSuccessIfVersionIs(null, 5L, SyncType.SNAPSHOT, NOW)).thenReturn(true);
+		givenRedisVersions(3, 7);
+		when(incrementalVersionApplier.apply(6)).thenReturn(IncrementalVersionResult.UNVERIFIABLE);
+
+		useCase.synchronizeCatalog();
+
+		verify(catalogSnapshotPort).getSnapshot();
+		verify(syncStateRepository).recordFailure(
+				"The catalog history could not be verified even after a snapshot; it will be retried", NOW);
+	}
+
+	@Test
+	void endsWithoutErrorWhenTheSnapshotIsAheadOfWhatRedisInformsYet() {
+		givenLocalVersion(null);
+		when(catalogSnapshotPort.getSnapshot()).thenReturn(snapshot(8L));
+		when(syncStateRepository.recordSuccessIfVersionIs(null, 8L, SyncType.SNAPSHOT, NOW)).thenReturn(true);
+		givenRedisVersions(1, 7);
+
+		useCase.synchronizeCatalog();
+
+		verify(catalogSnapshotPort).getSnapshot();
+		verify(syncStateRepository, never()).recordFailure(any(), any());
+	}
+
+	@Test
+	void endsWithoutErrorWhenAnotherCycleChangedTheVersionWhileApplying() {
+		// ADR-0007, CU-01 4b.
+		givenLocalVersion(3L);
+		givenRedisVersions(1, 6);
+		when(incrementalVersionApplier.apply(4)).thenReturn(IncrementalVersionResult.CONCURRENT_CHANGE);
+
+		useCase.synchronizeCatalog();
+
+		verify(incrementalVersionApplier, never()).apply(5);
+		verify(syncStateRepository).clearSyncInProgress();
+		verifyNoInteractions(catalogSnapshotPort);
+		verify(syncStateRepository, never()).recordFailure(any(), any());
+	}
+
+	@Test
+	void recordsTheRedisFailureAndKeepsTheLocalCopy() {
+		givenLocalVersion(3L);
+		when(catalogVersionPort.getVersions()).thenThrow(new CatalogChangesException("Catedra Redis unavailable (RedisConnectionException)"));
+
+		useCase.synchronizeCatalog();
+
+		verify(syncStateRepository).recordFailure("Catedra Redis unavailable (RedisConnectionException)", NOW);
+		// Con Redis caído no se cambia de estrategia: un snapshot no arregla un Redis que no responde.
+		verifyNoInteractions(catalogSnapshotPort, incrementalVersionApplier);
+	}
+
+	@Test
+	void recordsTheFailureWhenRedisFailsRightAfterTheSnapshot() {
+		givenLocalVersion(null);
+		when(catalogSnapshotPort.getSnapshot()).thenReturn(snapshot(1L));
+		when(syncStateRepository.recordSuccessIfVersionIs(null, 1L, SyncType.SNAPSHOT, NOW)).thenReturn(true);
+		when(catalogVersionPort.getVersions()).thenThrow(new CatalogChangesException("Catedra Redis unavailable (X)"));
+
+		useCase.synchronizeCatalog();
+
+		verify(syncStateRepository).recordFailure("Catedra Redis unavailable (X)", NOW);
+	}
+
+	@Test
+	void recordsAnInternalFailureWhenAVersionCannotBeStored() {
+		givenLocalVersion(3L);
+		givenRedisVersions(1, 4);
+		when(incrementalVersionApplier.apply(4)).thenThrow(new DataIntegrityViolationException("detalle interno"));
+
+		useCase.synchronizeCatalog();
+
+		verify(syncStateRepository).recordFailure(
+				"Internal error: catalog could not be synchronized (DataIntegrityViolationException)", NOW);
 	}
 
 	@Test
@@ -83,6 +264,7 @@ class SynchronizeCatalogUseCaseImplTest {
 		CatalogSnapshot snapshot = snapshot(1L);
 		when(catalogSnapshotPort.getSnapshot()).thenReturn(snapshot);
 		when(syncStateRepository.recordSuccessIfVersionIs(null, 1L, SyncType.SNAPSHOT, NOW)).thenReturn(true);
+		givenRedisVersions(1, 1);
 
 		useCase.synchronizeCatalog();
 
@@ -112,6 +294,7 @@ class SynchronizeCatalogUseCaseImplTest {
 			return snapshot(1L);
 		});
 		when(syncStateRepository.recordSuccessIfVersionIs(null, 1L, SyncType.SNAPSHOT, NOW)).thenReturn(true);
+		givenRedisVersions(1, 1);
 
 		useCase.synchronizeCatalog();
 
@@ -159,6 +342,14 @@ class SynchronizeCatalogUseCaseImplTest {
 		verify(syncStateRepository).recordFailure(
 				"Internal error: catalog snapshot could not be stored (DataIntegrityViolationException)", NOW);
 		verify(syncStateRepository, never()).recordSuccessIfVersionIs(any(), anyLong(), any(), any());
+	}
+
+	private void givenRedisVersions(long oldest, long current) {
+		when(catalogVersionPort.getVersions()).thenReturn(versions(oldest, current));
+	}
+
+	private static CatalogVersions versions(long oldest, long current) {
+		return CatalogVersions.builder().oldestAvailable(oldest).current(current).build();
 	}
 
 	private void givenLocalVersion(Long version) {

@@ -258,4 +258,22 @@ class RedisCatalogAdapterTest {
 				.message().doesNotContain("127.0.0.1").doesNotContain("clave-secreta");
 	}
 
+	// La conexión real del servicio (RedisConfig), con el usuario y la ACL de la cátedra: lee
+	// catedra:sync:* y no puede escribir ahí (REF §14.1).
+	@Test
+	void readsWithTheCatedraAclUserWhichCannotWriteTheSyncKeys() {
+		CatedraIntegration integration = new CatedraIntegration("proyecto-de-prueba", redis.getHost(), redis.getMappedPort(6379),
+				"grp_proyecto-de-prueba", "clave-redis-de-prueba", "kafka:9092", "grupo", "topic", "PROVISIONED");
+		CatedraProperties properties = new CatedraProperties("http://api", "jwt", Duration.ofSeconds(2), Duration.ofSeconds(5));
+		LettuceConnectionFactory factory =
+				(LettuceConnectionFactory) new RedisConfig().catedraRedisConnectionFactory(integration, properties);
+		factory.afterPropertiesSet();
+		StringRedisTemplate aclTemplate = new StringRedisTemplate(factory);
+		aclTemplate.afterPropertiesSet();
+
+		assertThat(newAdapter(aclTemplate).getVersions().getCurrent()).isEqualTo(7);
+		assertThatThrownBy(() -> aclTemplate.opsForValue().set("catedra:sync:current-version", "99"))
+				.hasRootCauseMessage("NOPERM No permissions to access a key");
+	}
+
 }
