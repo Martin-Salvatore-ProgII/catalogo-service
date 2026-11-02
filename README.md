@@ -119,6 +119,7 @@ Lo que sirve a más de una feature se lleva a `shared` en cuanto aparece el segu
 | --- | --- | --- |
 | `config/CatedraRestClientConfig` | Cliente HTTP de la cátedra, con el JWT técnico y los timeouts | Integración al arrancar, `sync` (snapshot) |
 | `rest/CatedraReadExecutor` | Lectura a la cátedra con un reintento (ADR-0029) y mensajes de falla sin su dirección | Integración al arrancar, `sync` (snapshot) |
+| `rest/NoRetryRequestFactory` | La conexión HTTP del cliente de la cátedra: timeouts configurados y sin reintentos propios (ADR-0029) | `CatedraRestClientConfig` |
 | `config/CatedraIntegrationConfig` | Pide la integración al arrancar; sin ella, el servicio no arranca (ADR-0005) | Redis y Kafka, desde la M5 |
 | `config/JwtConfig`, `config/SecurityConfig` | Validación del JWT de usuario y reglas de acceso | Todos los endpoints |
 | `web/advice/GlobalExceptionHandler` | Errores `problem+json` | Todos los endpoints |
