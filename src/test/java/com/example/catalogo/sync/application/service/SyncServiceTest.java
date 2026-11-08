@@ -6,11 +6,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Duration;
+
 import com.example.catalogo.sync.application.exception.CatalogNotReadyException;
 import com.example.catalogo.sync.domain.model.SyncState;
 import com.example.catalogo.sync.domain.ports.in.ClearInterruptedSyncUseCase;
 import com.example.catalogo.sync.domain.ports.in.GetSyncStatusUseCase;
+import com.example.catalogo.sync.domain.ports.in.HandleCatalogUpdatedUseCase;
 import com.example.catalogo.sync.domain.ports.in.IsCatalogReadyUseCase;
+import com.example.catalogo.sync.domain.ports.in.PurgeProcessedEventsUseCase;
 import com.example.catalogo.sync.domain.ports.in.SynchronizeCatalogUseCase;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,6 +36,12 @@ class SyncServiceTest {
 
 	@Mock
 	private GetSyncStatusUseCase getSyncStatusUseCase;
+
+	@Mock
+	private HandleCatalogUpdatedUseCase handleCatalogUpdatedUseCase;
+
+	@Mock
+	private PurgeProcessedEventsUseCase purgeProcessedEventsUseCase;
 
 	@InjectMocks
 	private SyncService syncService;
@@ -70,6 +80,20 @@ class SyncServiceTest {
 		syncService.clearInterruptedSync();
 
 		verify(clearInterruptedSyncUseCase).clearInterruptedSync();
+	}
+
+	@Test
+	void handlesACatalogUpdatedNoticeThroughTheUseCase() {
+		syncService.handleCatalogUpdated("evento-1");
+
+		verify(handleCatalogUpdatedUseCase).handleCatalogUpdated("evento-1");
+	}
+
+	@Test
+	void purgesProcessedEventsThroughTheUseCase() {
+		when(purgeProcessedEventsUseCase.purgeProcessedEvents(Duration.ofDays(7))).thenReturn(3);
+
+		assertThat(syncService.purgeProcessedEvents(Duration.ofDays(7))).isEqualTo(3);
 	}
 
 }

@@ -2,6 +2,9 @@ package com.example.catalogo.sync.infrastructure.rest.dto;
 
 import java.util.List;
 
+import com.example.catalogo.sync.infrastructure.catedra.dto.CatedraCategoryDto;
+import com.example.catalogo.sync.infrastructure.catedra.dto.CatedraProfessionalDto;
+import com.example.catalogo.sync.infrastructure.catedra.dto.CatedraWeeklyScheduleDto;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,7 +21,7 @@ import lombok.Setter;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class CatalogSnapshotResponse {
 	private Long snapshotVersion;
-	private List<CategorySnapshotDto> professionalCategories;
-	private List<ProfessionalSnapshotDto> professionals;
-	private List<WeeklyScheduleSnapshotDto> weeklySchedules;
+	private List<CatedraCategoryDto> professionalCategories;
+	private List<CatedraProfessionalDto> professionals;
+	private List<CatedraWeeklyScheduleDto> weeklySchedules;
 }

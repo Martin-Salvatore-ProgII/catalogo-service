@@ -17,6 +17,7 @@ import com.example.catalogo.shared.infrastructure.config.CatedraRestClientConfig
 import com.example.catalogo.shared.infrastructure.rest.CatedraReadExecutor;
 import com.example.catalogo.sync.application.exception.CatalogSnapshotException;
 import com.example.catalogo.sync.domain.model.CatalogSnapshot;
+import com.example.catalogo.sync.infrastructure.catedra.mapper.CatedraEntityMapper;
 import com.example.catalogo.sync.infrastructure.rest.mapper.CatalogSnapshotMapper;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -54,7 +55,7 @@ class CatedraSnapshotAdapterTest {
 		CatedraProperties properties = new CatedraProperties(FakeCatedra.baseUrl(catedra), FakeCatedra.TECHNICAL_TOKEN,
 				Duration.ofSeconds(1), Duration.ofSeconds(2));
 		RestClient client = new CatedraRestClientConfig().catedraRestClient(properties);
-		adapter = new CatedraSnapshotAdapter(client, new CatedraReadExecutor(), new CatalogSnapshotMapper());
+		adapter = new CatedraSnapshotAdapter(client, new CatedraReadExecutor(), new CatalogSnapshotMapper(new CatedraEntityMapper()));
 	}
 
 	@Test
