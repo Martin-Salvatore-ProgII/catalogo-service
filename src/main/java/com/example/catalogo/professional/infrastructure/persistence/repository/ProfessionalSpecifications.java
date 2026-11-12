@@ -30,7 +30,7 @@ public final class ProfessionalSpecifications {
 	}
 
 	// Habilitado efectivo (ADR-0014), la misma regla que Professional.isEffectivelyEnabled. Sin
-	// categorías habilitadas no hay ningún profesional habilitado: un IN vacío no es SQL válido.
+	// categorías habilitadas no hay ningún profesional habilitado.
 	public static Specification<ProfessionalEntity> effectivelyEnabled(Set<Long> enabledCategoryIds) {
 		return (root, query, cb) -> enabledCategoryIds.isEmpty()
 				? cb.disjunction()

@@ -29,9 +29,10 @@ public class SecurityConfig {
 		http
 				// CSRF protege formularios de sitios que identifican al usuario con una cookie de
 				// sesión. Acá no hay cookies ni sesión: cada pedido trae su token en un encabezado.
+				// por eso esta deshabilitado
 				.csrf(AbstractHttpConfigurer::disable)
 				.cors(Customizer.withDefaults())
-				// Sin sesión en el servidor: el token es la única prueba de identidad.
+				// Sin sesión en el servidor: el token es la única prueba de identidad. Stateless
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(authorize -> authorize
 						// Lo único público: saber si el servicio está en pie.
@@ -48,6 +49,7 @@ public class SecurityConfig {
 
 	// CORS cerrado: la lista de orígenes permitidos es configurable y está vacía (ADR-0036).
 	// La app Android y el servicio de turnos no son navegadores y no se ven afectados.
+	// Aun asi el eneunciado pedia la configuracion de un CORS
 	@Bean
 	public CorsConfigurationSource corsConfigurationSource(CorsProperties corsProperties) {
 		CorsConfiguration configuration = new CorsConfiguration();

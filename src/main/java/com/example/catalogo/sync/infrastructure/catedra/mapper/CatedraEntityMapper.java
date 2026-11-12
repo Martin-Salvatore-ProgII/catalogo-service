@@ -8,6 +8,7 @@ import com.example.catalogo.sync.infrastructure.catedra.dto.CatedraProfessionalD
 import com.example.catalogo.sync.infrastructure.catedra.dto.CatedraWeeklyScheduleDto;
 import org.springframework.stereotype.Component;
 
+// Convierte DTOs a modelo de dominio
 @Component
 public class CatedraEntityMapper {
 

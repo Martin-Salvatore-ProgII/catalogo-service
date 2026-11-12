@@ -33,7 +33,7 @@ public class ProfessionalController {
 	@GetMapping
 	@RequiresCatalogReady
 	public ResponseEntity<List<ProfessionalSummaryResponse>> searchProfessionals(
-			@Valid ProfessionalSearchRequest request) {
+			@Valid ProfessionalSearchRequest request) { //dto que valida los parametros de busqueda (filtros)
 		PageResult<ProfessionalSummary> result = professionalService.searchProfessionals(
 				professionalDtoMapper.toCriteria(request),
 				professionalDtoMapper.toSortOrders(request),

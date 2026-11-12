@@ -15,10 +15,9 @@ import org.springframework.web.client.RestClient;
 @EnableConfigurationProperties(CatedraProperties.class)
 public class CatedraRestClientConfig {
 
-	// Todo pedido a la cátedra va con el JWT técnico (REF §5.3). Sin timeouts, una cátedra que
+	// Todo pedido a la cátedra va con el JWT técnico (REF 5.3). Sin timeouts, una cátedra que
 	// acepta la conexión y no responde dejaría el pedido esperando para siempre.
-	// La conexión no reintenta por su cuenta: un reintento oculto se sumaría a los nuestros y no
-	// quedaría en el log (ADR-0029). Ni HttpURLConnection ni el cliente de java.net.http cumplen eso.
+	// La conexión no reintenta por su cuenta
 	@Bean
 	public RestClient catedraRestClient(CatedraProperties properties) {
 		return RestClient.builder()

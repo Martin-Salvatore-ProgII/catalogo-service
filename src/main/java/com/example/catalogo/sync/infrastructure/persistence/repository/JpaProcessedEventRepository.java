@@ -30,3 +30,6 @@ public interface JpaProcessedEventRepository extends JpaRepository<ProcessedEven
 	int deleteProcessedBefore(@Param("cutoff") Instant cutoff);
 
 }
+// la tabla processed_event fue agregada en la migracion V4
+// cutoff se declara en application.yaml como processed-event-retention. El scheduler de Spring ejecuta la accion 
+// cuando se cumple el tiempo

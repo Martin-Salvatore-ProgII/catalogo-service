@@ -12,7 +12,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-// Respuesta de GET /api/synchronization/snapshot (REF §7). generatedAt no se usa.
+// Conversion del json snapshot de la catedra a un objeto DTO. generatedAt no se usa. 
 @Getter
 @Setter
 @Builder

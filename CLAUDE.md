@@ -31,8 +31,7 @@ Las pruebas necesitan Docker en ejecución (PostgreSQL real con Testcontainers).
 - **`shared/infrastructure/web/advice`:** `GlobalExceptionHandler`.
 - **`shared/infrastructure/rest`:** `CatedraReadExecutor`, la lectura a la cátedra con un reintento y mensajes seguros (todo cliente REST de la cátedra la usa), y `NoRetryRequestFactory`, la conexión HTTP sin reintentos propios. La tabla de qué hay en `shared` y quién lo usa está en el README.
 - **Migraciones:** `V1` con las tablas `professional_category`, `professional` y `weekly_schedule`; `V2` con `sync_state`, una sola fila (`id = 1`) que crea la propia migración; `V3` con la extensión `unaccent`; `V4` con `processed_event` (clave primaria = `eventId`, ADR-0008).
-
-Todavía no hay HTTPS (ADR-0035).
+- **HTTPS (ADR-0035):** perfil `tls` (`application-tls.yaml`), que el Compose prende siempre, con el SSL bundle `server` y el certificado autofirmado de `secrets/`, compartido con turnos y generado por `generar-certificado.sh` del repo de turnos. Sin el perfil, el servicio queda en HTTP: todas las pruebas corren así salvo `TlsTest`, que usa el certificado de prueba de `src/test/resources/tls`.
 
 ## Lo propio de este servicio
 

@@ -9,7 +9,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-// Profesional, con los mismos datos que publica la cátedra (REF §7).
+// Profesional, con los mismos datos que publica la cátedra (REF 7).
 @Getter
 @Setter
 @Builder

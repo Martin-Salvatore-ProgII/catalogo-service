@@ -35,7 +35,7 @@ public class CatedraSnapshotAdapter implements CatalogSnapshotPort {
 			throw new CatalogSnapshotException(e.getMessage());
 		}
 		// Sin la versión o sin alguna de las tres colecciones no hay una copia completa que guardar
-		// (REF §7). El contenido de cada entidad no se valida acá (RNF-09).
+		// (REF 7). El contenido de cada entidad no se valida acá (RNF-09), simplemente chequea que no esten vacias
 		if (response.getSnapshotVersion() == null || response.getProfessionalCategories() == null
 				|| response.getProfessionals() == null || response.getWeeklySchedules() == null) {
 			throw new CatalogSnapshotException("Unexpected response from the catedra: incomplete snapshot");
