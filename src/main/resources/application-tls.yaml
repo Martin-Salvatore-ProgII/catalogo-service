@@ -1,0 +1,18 @@
+# HTTPS (ADR-0035). Se activa con el perfil "tls", que Docker Compose prende siempre: el sistema que se
+# levanta y se demuestra habla solo HTTPS, sin puerto HTTP ni redirección. Sin el perfil (las pruebas y
+# bootTestRun) el servicio queda en HTTP, porque no tiene certificado.
+#
+# El certificado y su clave vienen de afuera (secrets/) y no se commitean. Es el mismo certificado que usa
+# turnos: lo genera generar-certificado.sh, en el repo de turnos, y lo deja en secrets/ de los dos repos.
+spring:
+  ssl:
+    bundle:
+      pem:
+        server:
+          keystore:
+            certificate: ${TLS_CERTIFICATE_LOCATION}
+            private-key: ${TLS_PRIVATE_KEY_LOCATION}
+
+server:
+  ssl:
+    bundle: server
