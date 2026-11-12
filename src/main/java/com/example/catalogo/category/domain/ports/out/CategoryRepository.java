@@ -7,11 +7,10 @@ import java.util.Set;
 
 import com.example.catalogo.category.domain.model.Category;
 
+// a los puertos de salida los implementa un Adaptador, por eso es una interfaz
 public interface CategoryRepository {
 
-	// La regla (solo habilitadas, por nombre) está dicha acá, en el dominio: el caso de uso elige
-	// esta operación y el adaptador solo la ejecuta. Que la resuelva la base, y no el caso de uso
-	// en memoria, es para traer únicamente las filas que se van a usar.
+	// el CU elige esta operación y el adaptador solo la ejecuta. 
 	List<Category> findAllEnabledOrderedByName();
 
 	// La usa la agenda de un profesional para devolver su categoría (ADR-0064).

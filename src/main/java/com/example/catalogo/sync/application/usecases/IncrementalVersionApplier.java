@@ -27,7 +27,7 @@ import org.springframework.transaction.support.TransactionOperations;
 
 /**
  * Aplica una versión del catálogo por la vía incremental (CU-01, paso 4): lee de Redis lo que
- * cambió, y guarda los cambios y la versión local en una sola transacción (ADR-0007, ADR-0010).
+ * cambió, guarda los cambios y la versión local en una sola transacción (ADR-0007, ADR-0010).
  *
  * <p>No es un caso de uso: no tiene puerto de entrada. Es una pieza de {@link
  * SynchronizeCatalogUseCaseImpl}, separada para que el caso de uso que decide el ciclo (la tabla
@@ -47,13 +47,12 @@ class IncrementalVersionApplier {
 	private final CategoryRepository categoryRepository;
 	private final ProfessionalRepository professionalRepository;
 	private final WeeklyScheduleRepository weeklyScheduleRepository;
-	private final TransactionOperations transactionOperations;
+	private final TransactionOperations transactionOperations;  // usamos el de Spring
 	private final Clock clock;
 
 	/** Aplica la versión {@code version}, que tiene que seguir a la local {@code version - 1}. */
 	IncrementalVersionResult apply(long version) {
-		// Todo lo que se lee de Redis va antes de la transacción: la base no queda comprometida
-		// mientras se espera a la cátedra (ADR-0007).
+	// Antes de la transacción se chequea que no haya quedado nulo o inverificable lo que vamos a operar (ADR-0007).
 		VersionChanges changes = catalogChangesPort.findChanges(version).orElse(null);
 		if (changes == null) {
 			log.warn("Catalog version {} has no readable changes", version);
@@ -64,7 +63,7 @@ class IncrementalVersionApplier {
 			return IncrementalVersionResult.UNVERIFIABLE;
 		}
 		boolean applied = Boolean.TRUE.equals(transactionOperations.execute(status -> {
-			// Padres antes que hijos, por las claves foráneas.
+			// guardamos padres antes que hijos, por las claves foráneas.
 			categoryRepository.saveAll(content.categories());
 			professionalRepository.saveAll(content.professionals());
 			weeklyScheduleRepository.saveAll(content.schedules());
@@ -81,7 +80,7 @@ class IncrementalVersionApplier {
 	}
 
 	// Lee el estado actual de las entidades de la versión y de las que referencian y falten en la
-	// copia local (ADR-0009). Null si algo no está en Redis.
+	// copia local (ADR-0009). Por ej: un Profesional que apunta a una Categoria aun no existente
 	private VersionContent readContent(long version, VersionChanges changes) {
 		Map<Long, Category> categories = new LinkedHashMap<>();
 		Map<Long, Professional> professionals = new LinkedHashMap<>();
@@ -91,7 +90,7 @@ class IncrementalVersionApplier {
 				|| !readAll(changes.getProfessionalIds(), catalogChangesPort::findProfessionals, Professional::getId, professionals)
 				|| !readAll(changes.getWeeklyScheduleIds(), catalogChangesPort::findWeeklySchedules, WeeklySchedule::getId, schedules)) {
 			log.warn("Catalog version {} lists entities that are not in Redis", version);
-			return null;
+			return null; // Null si algo no está en Redis.
 		}
 
 		// Los horarios apuntan a un profesional y los profesionales a una categoría. Se completa de
@@ -121,8 +120,8 @@ class IncrementalVersionApplier {
 		return missing;
 	}
 
-	// Lee las entidades de los ids pedidos y las suma a destino. false si alguna no se pudo leer:
-	// el estado no se puede verificar.
+	// Lee las entidades de los ids pedidos y las suma a destino. si alguna no se pudo leer: false
+	// ya que el estado no se puede verificar.
 	private <T> boolean readAll(Collection<Long> ids, Function<Collection<Long>, List<T>> reader,
 			Function<T, Long> idOf, Map<Long, T> destination) {
 		Set<Long> wanted = new LinkedHashSet<>(ids);
@@ -133,7 +132,7 @@ class IncrementalVersionApplier {
 		found.forEach(entity -> destination.put(idOf.apply(entity), entity));
 		return wanted.stream().allMatch(destination::containsKey);
 	}
-
+	// record para que sea inmutable
 	private record VersionContent(List<Category> categories, List<Professional> professionals, List<WeeklySchedule> schedules) {
 	}
 

@@ -18,6 +18,7 @@ public class CatalogSyncScheduler {
 	private final SyncService syncService;
 	private final SyncProperties syncProperties;
 
+	// schedule manejado por Spring . Valores determinados en application.yaml
 	@Scheduled(fixedDelayString = "${catalogo.sync.check-interval}", initialDelayString = "${catalogo.sync.check-interval}")
 	public void checkPeriodically() {
 		syncService.synchronizeCatalog();

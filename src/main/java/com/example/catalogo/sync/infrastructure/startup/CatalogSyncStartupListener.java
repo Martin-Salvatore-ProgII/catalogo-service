@@ -14,6 +14,7 @@ public class CatalogSyncStartupListener {
 
 	private final SyncService syncService;
 
+	// sistema de eventos interno de Spring. Spring lo "llama" cuando se cumple el evento ApplicationReadyEvent
 	@EventListener(ApplicationReadyEvent.class)
 	public void onApplicationReady() {
 		syncService.clearInterruptedSync();
