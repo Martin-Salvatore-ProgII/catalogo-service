@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 /**
  * Disparador por aviso de Kafka (ADR-0006). Kafka es solo una notificación: los datos salen de
  * Redis o del snapshot. El topic sale de la integración que se pidió al arrancar (ADR-0005).
+ * Es un Adaptador de Entrada
  */
 @Slf4j
 @Component
@@ -21,6 +22,7 @@ public class CatalogUpdatedListener {
 	private final SyncService syncService;
 	private final CatalogUpdatedMessageMapper messageMapper;
 
+	// donde escuchar sale de CatedraIntegration cuyo valor se cargo en el pedido inicial api/student/integration
 	@KafkaListener(topics = "#{@catedraIntegration.kafkaCatalogTopic()}")
 	public void onCatalogUpdated(ConsumerRecord<String, String> record, Acknowledgment acknowledgment) {
 		try {
@@ -31,8 +33,9 @@ public class CatalogUpdatedListener {
 			// chequeo periódico lo recupera (ADR-0011).
 			log.error("CatalogUpdated notice at offset {} could not be processed", record.offset(), e);
 		}
-		// Recién ahora, con el ciclo terminado y su resultado ya guardado (REF §16). El caso de uso
-		// no lanza ante una falla de la cátedra: la registra en el estado de sincronización.
+		// Recién ahora, con el ciclo terminado y su resultado ya guardado (REF 16). El caso de uso
+		// no lanza excepcion ante una falla de la cátedra: la registra en el estado de sincronización. 
+		// Para evitar bucle con Kafka reentregando el msj y que siga fallando
 		acknowledgment.acknowledge();
 	}
 

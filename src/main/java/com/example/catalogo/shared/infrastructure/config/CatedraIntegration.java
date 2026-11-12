@@ -3,8 +3,9 @@ package com.example.catalogo.shared.infrastructure.config;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /**
- * Configuración de la integración que asigna la cátedra (REF §5.3). Solo lleva los campos que usa
+ * Configuración de la integración que asigna la cátedra (REF 5.3). Solo lleva los campos que usa
  * el catálogo: Redis, Kafka y el topic de avisos del catálogo. Los topics de turnos se ignoran.
+ * Es la rta al primer pedido a la catedra api/student/integration
  *
  * <p>Vive en memoria: no se guarda en la base ni en archivos (ADR-0005).
  */

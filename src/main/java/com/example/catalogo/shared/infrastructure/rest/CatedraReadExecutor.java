@@ -14,15 +14,16 @@ import org.springframework.web.client.RestClientException;
  * Ejecuta una lectura a la API de la cátedra con las reglas comunes a todas: un intento más si la
  * cátedra no responde (ADR-0029) y una {@link CatedraRequestException} con un mensaje seguro ante
  * cualquier falla. La usan el pedido de la integración al arrancar y el snapshot (ADR-0063).
+ * Interpreta los errores de la catedra
  */
-@Slf4j
+@Slf4j  //logeamos la cantidad de reintentos a la catedra
 @Component
 public class CatedraReadExecutor {
 
-	// Es una lectura: un intento más (ADR-0029). Un corte breve no alcanza para dar la cátedra
-	// por caída.
+// Es una lectura: un intento más (ADR-0029). Un corte breve no alcanza para dar la cátedra por caída.
 	private static final int MAX_ATTEMPTS = 2;
 
+		// reintenta la conexion dos veces, si excede lo logea
 	public <T> T read(Supplier<T> request) {
 		for (int attempt = 1; ; attempt++) {
 			try {
@@ -42,7 +43,7 @@ public class CatedraReadExecutor {
 	}
 
 	// Un 4xx no se reintenta: repetir el mismo pedido da la misma respuesta. Los errores se
-	// distinguen por el status, nunca por el texto del cuerpo (REF §13).
+	// distinguen por el status, nunca por el texto del cuerpo (REF 13).
 	private <T> T readOnce(Supplier<T> request) {
 		try {
 			T body = request.get();

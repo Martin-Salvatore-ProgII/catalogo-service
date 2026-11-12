@@ -8,7 +8,8 @@ import com.example.catalogo.category.domain.ports.out.CategoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-@Component
+//uso Component porque no es un Service, Controller o Repository, pero aun asi es una clase Bean de Spring
+@Component 
 @RequiredArgsConstructor
 public class GetAllCategoriesUseCaseImpl implements GetAllCategoriesUseCase {
 
@@ -16,7 +17,7 @@ public class GetAllCategoriesUseCaseImpl implements GetAllCategoriesUseCase {
 
 	// Las categorías se ofrecen como filtro de búsqueda: una deshabilitada no tiene que poder
 	// elegirse, y se muestran por nombre. Se responde con la copia local, sin consultar a la
-	// cátedra (ENUNCIADO §4.1).
+	// cátedra (ENUNCIADO 4.1).
 	@Override
 	public List<Category> getAllCategories() {
 		return repository.findAllEnabledOrderedByName();

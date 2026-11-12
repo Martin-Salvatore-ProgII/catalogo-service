@@ -9,7 +9,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-// Valor de catedra:sync:changes:{version} (REF §14.5).
+// Valor de catedra:sync:changes:{version} (REF 14.5).
 @Getter
 @Setter
 @Builder

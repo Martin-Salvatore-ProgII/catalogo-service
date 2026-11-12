@@ -33,23 +33,23 @@ public class ProfessionalSearchRequest {
 	private Long categoryId;
 
 	@Size(min = 1, max = 100)
-	@Pattern(regexp = ".*\\S.*", message = "must not be blank")
-	private String name;
+	@Pattern(regexp = ".*\\S.*", message = "must not be blank") //valida que no este vacio
+	private String name; //para coincidencias parciales
 
-	// Sin el parámetro queda en null, y el caso de uso aplica el valor por defecto (true).
+	// por defecto TRUE. 
 	private Boolean enabled;
 
 	@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
 	private LocalDate date;
 
-	// ISO acepta HH:mm y HH:mm:ss, como pide el contrato.
+	// ISO acepta HH:mm y HH:mm:ss, como pide el contrato de la catedra.
 	@DateTimeFormat(iso = DateTimeFormat.ISO.TIME)
 	private LocalTime timeFrom;
 
 	@DateTimeFormat(iso = DateTimeFormat.ISO.TIME)
 	private LocalTime timeTo;
 
-	@Min(0)
+	@Min(0)  //higher or equal
 	private Integer page;
 
 	@Min(1)
