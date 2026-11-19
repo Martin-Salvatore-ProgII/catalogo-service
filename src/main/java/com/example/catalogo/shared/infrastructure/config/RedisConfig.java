@@ -42,7 +42,7 @@ public class RedisConfig {
 						.build())
 				.build();
 		// La conexión se abre en el primer comando, no al arrancar: un Redis caído no impide que el
-		// servicio arranque y atienda búsquedas con la copia local (ENUNCIADO §8).
+		// servicio arranque y atienda búsquedas con la copia local (ENUNCIADO 8).
 		return new LettuceConnectionFactory(server, client);
 	}
 

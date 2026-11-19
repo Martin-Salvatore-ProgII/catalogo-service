@@ -6,6 +6,7 @@ import com.example.catalogo.sync.infrastructure.rest.dto.CatalogSnapshotResponse
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+// arma el CatalogSnapshot mapeando los 3 DTO a su funcion que arma sus respectivas entidades
 @Component
 @RequiredArgsConstructor
 public class CatalogSnapshotMapper {

@@ -16,3 +16,6 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface RequiresCatalogReady {
 }
+
+// CatalogReadyInterceptor es quien tiene la logica que revisa que clases tienen esta anotacion, y sino hace saltar
+// la excepcion CatalogoNotReadyException

@@ -6,7 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 // Un proceso que recién arranca no tiene ningún ciclo en curso: si quedó la marca, es de una
-// sincronización que una caída dejó a medias (docs/arq/robustez.md).
+// sincronización que por algun error quedo a medias (docs/arq/robustez.md).
 @Component
 @RequiredArgsConstructor
 public class ClearInterruptedSyncUseCaseImpl implements ClearInterruptedSyncUseCase {

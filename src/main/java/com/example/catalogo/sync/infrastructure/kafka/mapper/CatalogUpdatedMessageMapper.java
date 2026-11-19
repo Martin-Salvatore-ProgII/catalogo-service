@@ -15,7 +15,7 @@ public class CatalogUpdatedMessageMapper {
 	private final JsonMapper jsonMapper;
 
 	// El eventId del aviso, o null si no se puede leer: JSON ilegible, otro eventType o sin eventId
-	// (CU-01, 1b). Nunca lanza: un aviso mal formado no puede frenar el consumo (ADR-0031).
+	// (CU-01, 1b). un aviso mal formado no puede frenar el consumo (ADR-0031).
 	public String toEventId(String payload) {
 		if (payload == null) {
 			return null;

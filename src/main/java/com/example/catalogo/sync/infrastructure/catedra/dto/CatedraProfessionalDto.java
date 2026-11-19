@@ -9,6 +9,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+// lo usa CatalogSnapshotResponse para armar las listas de cada cosa que compone al snapshot
 @Getter
 @Setter
 @Builder

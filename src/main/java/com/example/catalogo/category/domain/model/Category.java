@@ -12,14 +12,14 @@ import lombok.Setter;
 @Getter
 @Setter
 @Builder
-@NoArgsConstructor
+@NoArgsConstructor  // Jackson o Hibernate no saben que datos vendran a un Objeto, por ello inicializan con constructor vacio y luego asignan valores
 @AllArgsConstructor
 public class Category {
-	// El id es el que asigna la cátedra, no uno propio.
+	// El valor del id es el que asigna la cátedra, no uno propio.
 	private Long id;
 	private String name;
 	private String description;
 	private boolean enabled;
-	private Instant createdAt;
+	private Instant createdAt;   //Time se repite una vez todos los dias mientras que Instant es unico en la vida
 	private Instant updatedAt;
 }

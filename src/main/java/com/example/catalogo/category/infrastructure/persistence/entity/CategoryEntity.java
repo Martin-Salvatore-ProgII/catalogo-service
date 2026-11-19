@@ -2,6 +2,7 @@ package com.example.catalogo.category.infrastructure.persistence.entity;
 
 import java.time.Instant;
 
+//jakarta-persistence es JPA
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;

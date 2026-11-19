@@ -14,8 +14,10 @@ import com.example.catalogo.category.infrastructure.persistence.repository.JpaCa
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-@Component
+@Component  // el @Repository para Spring es JpaCategoryRepository ; no este adaptador
 @RequiredArgsConstructor
+//una clase que implementa un puerto de salida es un adaptador ("adapta" la tecnologia al puerto)
+// la tecnologia adaptada por este puerto es spring-data-JPA implementada en JpaCategoryRepository (no Adapter)
 public class JpaCategoryRepositoryAdapter implements CategoryRepository {
 
 	private final JpaCategoryRepository jpaCategoryRepository;
@@ -24,7 +26,7 @@ public class JpaCategoryRepositoryAdapter implements CategoryRepository {
 	@Override
 	public List<Category> findAllEnabledOrderedByName() {
 		return jpaCategoryRepository.findAllByEnabledTrueOrderByNameAsc().stream()
-				.map(categoryMapper::toDomainModel)
+				.map(categoryMapper::toDomainModel)      // :: son formas de referenciar metodos
 				.toList();
 	}
 

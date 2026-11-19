@@ -29,15 +29,15 @@ public class HandleCatalogUpdatedUseCaseImpl implements HandleCatalogUpdatedUseC
 	@Override
 	public void handleCatalogUpdated(String eventId) {
 		if (eventId == null) {
-			// Sin eventId no hay con qué deduplicar. Sincronizar de más es inofensivo: si la copia
-			// ya está al día, el ciclo no hace nada.
+			// Sin eventId no hay con qué reconocer si ya fue procesado. Sincronizar de más es inofensivo: 
+			// si la copia ya está al día, el ciclo no hace nada.
 			log.warn("Unreadable CatalogUpdated notice: synchronizing anyway");
 			synchronizeCatalogUseCase.synchronizeCatalog();
 			return;
 		}
-		// Lo decide la clave primaria de la base (ADR-0070), no una consulta previa.
+		// revisa si ya se proceso ese eventID (ADR-0070).
 		if (!processedEventRepository.registerIfNew(eventId, clock.instant())) {
-			// Queda a la vista que el duplicado se reconoció (ENUNCIADO §11, REF §18.1).
+			// Queda a la vista que el duplicado se reconoció (ENUNCIADO 11, REF 18.1).
 			log.info("Duplicate CatalogUpdated event {} ignored", eventId);
 			return;
 		}

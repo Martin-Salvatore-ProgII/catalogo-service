@@ -25,6 +25,10 @@ services:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       JWT_PUBLIC_KEY_LOCATION: file:/run/secrets/jwt-public.pem
+      # HTTPS con el certificado autofirmado de secrets/, el mismo que el de turnos (ADR-0035).
+      SPRING_PROFILES_ACTIVE: tls
+      TLS_CERTIFICATE_LOCATION: file:/run/secrets/tls.crt
+      TLS_PRIVATE_KEY_LOCATION: file:/run/secrets/tls.key
       CATEDRA_API_URL: ${CATEDRA_API_URL}
       CATEDRA_TECHNICAL_TOKEN: ${CATEDRA_TECHNICAL_TOKEN}
     volumes:

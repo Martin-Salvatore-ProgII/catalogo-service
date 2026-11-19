@@ -9,10 +9,10 @@ import com.example.catalogo.professional.domain.model.Professional;
 import com.example.catalogo.professional.domain.model.WeeklySchedule;
 import com.example.catalogo.sync.domain.model.VersionChanges;
 
-// Lo que hace falta para aplicar una versión: qué cambió y cómo está cada entidad ahora (REF §14.4,
-// §14.5). Si la cátedra no responde, los adaptadores lanzan CatalogChangesException.
+// Lo que hace falta para aplicar una versión: qué cambió y cómo está cada entidad ahora (REF 14.4,
+// 14.5). Si la cátedra no responde, los adaptadores lanzan CatalogChangesException.
 //
-// Lo que falta o no se puede leer no es un error: no aparece en el resultado. Quien lo llama decide
+// Lo que falta o lo que no se puede leer no es un error: no aparece en el resultado. Quien lo llama decide
 // qué hacer (la tabla de situaciones de docs/arq/sincronizacion.md manda a un snapshot).
 public interface CatalogChangesPort {
 

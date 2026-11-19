@@ -41,7 +41,8 @@ public class JwtConfig {
 	}
 
 	// Los roles vienen en el claim "auth" tal cual se usan (ROLE_USER, ROLE_ADMIN). Por defecto
-	// Spring los buscaría en otro claim y les agregaría un prefijo.
+	// Spring los buscaría en otro claim y les agregaría un prefijo. Esto funciona como "traductor" para el 
+	// formato de spring
 	@Bean
 	public JwtAuthenticationConverter jwtAuthenticationConverter() {
 		JwtGrantedAuthoritiesConverter authoritiesConverter = new JwtGrantedAuthoritiesConverter();

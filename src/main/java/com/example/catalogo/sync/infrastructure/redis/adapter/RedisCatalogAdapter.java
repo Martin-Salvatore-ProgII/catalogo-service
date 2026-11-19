@@ -32,7 +32,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Lee del Redis de la cátedra las versiones, los cambios de cada versión y el estado actual de las
- * entidades (REF §14). Solo lee: la ACL no permite escribir en {@code catedra:sync:*}.
+ * entidades (REF 14). Solo lee: la catedra no permite escribir en {@code catedra:sync:*}.
  *
  * <p>Una falla de Redis es una {@link CatalogChangesException}. Un valor ausente o ilegible no lo
  * es: se devuelve como "no está", porque en los dos casos el estado no se puede verificar y la
@@ -45,7 +45,8 @@ public class RedisCatalogAdapter implements CatalogVersionPort, CatalogChangesPo
 
 	static final String CURRENT_VERSION_KEY = "catedra:sync:current-version";
 	static final String OLDEST_VERSION_KEY = "catedra:sync:oldest-available-version";
-	static final String CHANGES_KEY_PREFIX = "catedra:sync:changes:";
+	static final String CHANGES_KEY_PREFIX = "catedra:sync:changes:";  //los IDs que cambiaron en la version
+	//el estado actual de las entidades
 	static final String CATEGORIES_KEY = "catedra:sync:professional-categories";
 	static final String PROFESSIONALS_KEY = "catedra:sync:professionals";
 	static final String WEEKLY_SCHEDULES_KEY = "catedra:sync:weekly-schedules";
@@ -57,13 +58,13 @@ public class RedisCatalogAdapter implements CatalogVersionPort, CatalogChangesPo
 
 	@Override
 	public CatalogVersions getVersions() {
-		// Dos lecturas de un String cada una. Sin las dos no hay con qué comparar: es una falla de
-		// Redis, no un historial incompleto.
+		// Dos lecturas de un String cada una. Sin las dos no hay con qué comparar
 		long current = readVersion(CURRENT_VERSION_KEY);
 		long oldest = readVersion(OLDEST_VERSION_KEY);
 		return CatalogVersions.builder().current(current).oldestAvailable(oldest).build();
 	}
 
+	// parsea y valida el changes de la catedra 
 	@Override
 	public Optional<VersionChanges> findChanges(long version) {
 		String json = call(() -> redisTemplate.opsForValue().get(CHANGES_KEY_PREFIX + version));
@@ -71,14 +72,13 @@ public class RedisCatalogAdapter implements CatalogVersionPort, CatalogChangesPo
 			return Optional.empty();
 		}
 		VersionChangesResponse response = parse(json, VersionChangesResponse.class, CHANGES_KEY_PREFIX + version);
-		// Los tres arreglos son obligatorios (REF §14.5), y la clave tiene que ser de la versión que
-		// se pidió: otra cosa es un historial que no se puede verificar.
+		// Los tres arreglos son obligatorios (REF 14.5), y la clave tiene que ser de la versión que se pidió
 		boolean valid = response != null && response.getVersion() != null && response.getVersion() == version
 				&& response.getChanges() != null && response.getChanges().getProfessionalCategories() != null
 				&& response.getChanges().getProfessionals() != null && response.getChanges().getWeeklySchedules() != null;
 		if (!valid) {
 			log.warn("Unreadable or inconsistent changes for catalog version {}", version);
-			return Optional.empty();
+			return Optional.empty(); // si algo era inconsistente, empty
 		}
 		return Optional.of(versionChangesMapper.toDomainModel(response));
 	}
@@ -100,7 +100,7 @@ public class RedisCatalogAdapter implements CatalogVersionPort, CatalogChangesPo
 				entityMapper::toWeeklySchedule);
 	}
 
-	// Un solo HMGET por colección: la latencia hacia la cátedra se paga una vez, no por entidad.
+	// Un solo HashMultipleGET, permite pedir datos especificos de un Hash de Redis
 	private <D, M> List<M> findEntities(
 			String key, Collection<Long> ids, Class<D> type, Function<D, Long> idOf, Function<D, M> toDomain) {
 		if (ids.isEmpty()) {
@@ -115,7 +115,7 @@ public class RedisCatalogAdapter implements CatalogVersionPort, CatalogChangesPo
 						return null;
 					}
 					D dto = parse(value.toString(), type, key + "[" + fields.get(i) + "]");
-					// El field es el id (REF §14.4): un valor con otro id no es el que se pidió.
+					// El field es el id (REF 14.4): un valor con otro id no es el que se pidió.
 					if (dto == null || !Objects.equals(idOf.apply(dto), Long.valueOf(fields.get(i).toString()))) {
 						log.warn("Unreadable or inconsistent entity {}[{}]", key, fields.get(i));
 						return null;

@@ -2,7 +2,7 @@ package com.example.catalogo.category.infrastructure.web.controller;
 
 import java.util.List;
 
-import com.example.catalogo.category.application.service.CategoryService;
+import com.example.catalogo.category.application.service.CategoryService;  // la fachada
 import com.example.catalogo.category.infrastructure.web.dto.CategoryResponse;
 import com.example.catalogo.category.infrastructure.web.mapper.CategoryDtoMapper;
 import com.example.catalogo.shared.infrastructure.web.catalog.RequiresCatalogReady;

@@ -23,8 +23,9 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
  * Traduce los errores a {@code application/problem+json} con la forma del esquema {@code Problem}
  * del contrato. Los errores propios de Spring MVC (ruta inexistente, método no permitido, JSON mal
  * formado) los resuelve la clase base.
+ * Responde a la app kmp o a turnos-service
  */
-@Slf4j
+@Slf4j   // el unico error que logea es el "Unexpected error"
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
@@ -36,6 +37,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 	private static final String DATE_OUT_OF_RANGE = "DATE_OUT_OF_RANGE";
 	private static final String PROFESSIONAL_NOT_FOUND = "PROFESSIONAL_NOT_FOUND";
 
+	// se dispara cuando los datos no son validos. 
+	// Spring lanza MethodArgumentNotValidExcepcion y este metodo lo traduce a un 400
 	@Override
 	protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
 			HttpHeaders headers, HttpStatusCode status, WebRequest request) {
@@ -49,7 +52,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		ProblemDetail problem = ex.getBody();
 		problem.setProperty("code", VALIDATION_ERROR);
 		problem.setProperty("fieldErrors", fieldErrors);
-		return handleExceptionInternal(ex, problem, headers, status, request);
+		return handleExceptionInternal(ex, problem, headers, status, request);  // el ultimo metodo de la clase
 	}
 
 	// Mientras no haya versión local no hay copia con la que responder (docs/arq/contratos.md).
@@ -68,7 +71,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		return handleExceptionInternal(ex, problem, new HttpHeaders(), HttpStatus.BAD_REQUEST, request);
 	}
 
-	// Mismo código que la cátedra (REF §13.1): turnos lo trata igual venga de donde venga.
+	// Mismo código que la cátedra (REF 13.1): turnos lo trata igual venga de donde venga.
 	@ExceptionHandler(ProfessionalNotFoundException.class)
 	public ResponseEntity<Object> handleProfessionalNotFound(ProfessionalNotFoundException ex, WebRequest request) {
 		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());

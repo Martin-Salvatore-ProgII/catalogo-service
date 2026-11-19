@@ -7,6 +7,7 @@ import com.example.catalogo.category.domain.ports.in.GetAllCategoriesUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+// es una fachada, inyecta los in ports y delega
 @Service
 @RequiredArgsConstructor
 public class CategoryService {

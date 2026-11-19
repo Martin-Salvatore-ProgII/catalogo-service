@@ -41,7 +41,7 @@ public class SearchProfessionalsUseCaseImpl implements SearchProfessionalsUseCas
 	private final AvailabilityHorizon availabilityHorizon;
 	private final Clock clock;
 
-	// Se responde con la copia local, sin consultar a la cátedra (ENUNCIADO §6.2). Son varias
+	// Se responde con la copia local, sin consultar a la cátedra (ENUNCIADO 6.2). Son varias
 	// lecturas (la página, el total y las categorías): con REPEATABLE READ todas ven la misma
 	// versión del catálogo, aunque un snapshot se aplique en el medio (ADR-0010).
 	@Override

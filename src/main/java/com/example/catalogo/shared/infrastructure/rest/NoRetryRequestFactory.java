@@ -22,11 +22,11 @@ public final class NoRetryRequestFactory {
 
 	// Los únicos reintentos son los del ADR-0029, que dejan rastro en el log. El cliente de
 	// java.net.http repite por su cuenta un GET cuyo servidor corta la conexión (con HTTP/1.1, que es
-	// lo que habla la cátedra real) y no hay forma de apagarlo en un solo cliente: la propiedad del
-	// JDK es global a la JVM. El de Apache sí: disableAutomaticRetries().
+	// lo que habla la cátedra real) y no hay forma de apagarlo en un solo cliente
+	// Elegi el de Apache porque si puede deshabilitarse: disableAutomaticRetries().
 	public static ClientHttpRequestFactory create(Duration connectTimeout, Duration readTimeout) {
 		ConnectionConfig connectionConfig = ConnectionConfig.custom()
-				.setConnectTimeout(Timeout.of(connectTimeout))
+				.setConnectTimeout(Timeout.of(connectTimeout))   // definidos en application.yaml
 				.setSocketTimeout(Timeout.of(readTimeout))
 				.build();
 		PoolingHttpClientConnectionManager connectionManager = PoolingHttpClientConnectionManagerBuilder.create()
@@ -40,3 +40,4 @@ public final class NoRetryRequestFactory {
 	}
 
 }
+// se arma el 

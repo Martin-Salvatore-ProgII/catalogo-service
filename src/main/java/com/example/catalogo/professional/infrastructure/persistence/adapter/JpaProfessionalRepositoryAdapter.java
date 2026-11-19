@@ -38,10 +38,16 @@ public class JpaProfessionalRepositoryAdapter implements ProfessionalRepository 
 		return jpaProfessionalRepository.findById(id).map(professionalMapper::toDomainModel);
 	}
 
+/**
+ * Combina las especificaciones de busqueda, haciendo uso del patron Specification 
+ * la logica de filtrado esta en ProfessionalSpecifications
+ */ 
 	@Override
 	public PageResult<Professional> search(ProfessionalSearchCriteria criteria, List<ProfessionalSortOrder> sort,
-			PageQuery page) {
-		Specification<ProfessionalEntity> specification = Specification.unrestricted();
+			PageQuery page) { 
+			// haber aplicado este patron ahorro realizar 16 metodos de busqueda (4x4 filtros)
+		Specification<ProfessionalEntity> specification = Specification.unrestricted(); // empieza sin especificacion
+		//se le va sumando cada filtro que vino no nulo a la busqueda, para hacer el filtrado compuesto
 		if (criteria.getCategoryId() != null) {
 			specification = specification.and(ProfessionalSpecifications.hasCategory(criteria.getCategoryId()));
 		}

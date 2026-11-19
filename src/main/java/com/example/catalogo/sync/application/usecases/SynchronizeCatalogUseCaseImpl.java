@@ -20,10 +20,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionOperations;
 
 /**
- * Un ciclo de sincronización (CU-01, CU-02): compara la versión local (L) con las que publica la
- * cátedra en Redis, la actual (C) y la más vieja disponible (O), y decide según la tabla de
- * situaciones de {@code docs/arq/sincronizacion.md}. Nunca lanza una excepción: una falla se
- * registra en el estado de sincronización y la retoma el próximo disparador (ADR-0011).
+ * Un ciclo de sincronización (CU-01, CU-02): compara la versión local (L) con la actual (C) y la más vieja disponible (O) 
+ * que publica la cátedra en Redis en Redis, y decide según la tabla de situaciones de {@code docs/arq/sincronizacion.md}.
+ * Nunca lanza una excepción: una falla se registra en el estado de sincronización y la retoma el próximo disparador (ADR-0011).
  */
 @Slf4j
 @Component
@@ -63,7 +62,7 @@ public class SynchronizeCatalogUseCaseImpl implements SynchronizeCatalogUseCase 
 	private void runCycle() {
 		Long local = syncStateRepository.getCurrent().getLocalVersion();
 		// Un solo snapshot por ciclo: si ni después de reemplazar la copia el historial cierra, otro
-		// snapshot no lo arreglaría, y repetirlo sin fin es lo que ENUNCIADO §8 prohíbe. Se
+		// snapshot no lo arreglaría, y repetirlo sin fin es lo que ENUNCIADO 8 prohíbe. Se
 		// registra el error y lo retoma el próximo disparador.
 		boolean snapshotTaken = false;
 		while (true) {
@@ -107,7 +106,7 @@ public class SynchronizeCatalogUseCaseImpl implements SynchronizeCatalogUseCase 
 		}
 	}
 
-	// CU-01, paso 4: las versiones en orden, de a una. Devuelve la última versión aplicada, o null
+	// CU-01, paso 4: aplicar las versiones en orden, de a una. Devuelve la última versión aplicada, o null
 	// si otro ciclo ya cambió la local y este debe terminar sin error (ADR-0007). Si una versión no
 	// se puede verificar, devuelve hasta dónde llegó, y esa versión queda sin aplicar.
 	private Long applyVersions(long local, long current) {
@@ -116,22 +115,22 @@ public class SynchronizeCatalogUseCaseImpl implements SynchronizeCatalogUseCase 
 			// Aplicar una versión apaga la marca de "en curso"; si faltan más, se vuelve a encender.
 			syncStateRepository.markSyncStarted();
 			IncrementalVersionResult result = incrementalVersionApplier.apply(version);
-			if (result == IncrementalVersionResult.CONCURRENT_CHANGE) {
+			if (result == IncrementalVersionResult.CONCURRENT_CHANGE) { //otro ciclo cambio la version
 				syncStateRepository.clearSyncInProgress();
 				log.info("Catalog version {} discarded: another sync already changed the local version", version);
 				return null;
 			}
-			if (result == IncrementalVersionResult.UNVERIFIABLE) {
+			if (result == IncrementalVersionResult.UNVERIFIABLE) { // corta y deja ahi
 				return reached;
 			}
-			reached = version;
+			reached = version;  // todo OK y sigue con la proxima
 			log.info("Catalog advanced to version {}", version);
 		}
 		return reached;
 	}
 
-	// CU-02. Reemplazar la copia entera (borrar y volver a guardar) es simple y obviamente correcto,
-	// y su costo no importa: el snapshot solo se usa al iniciar con la base vacía o para recuperarse.
+	// CU-02. Reemplazar la copia entera (borrar y volver a guardar)
+	// el snapshot solo se usa al iniciar con la base vacía o para recuperarse.
 	// Lo habitual es la vía incremental, que guarda por id solo lo que cambió.
 	// Devuelve la versión del snapshot aplicado, o null si no se aplicó: el ciclo termina.
 	private Long rebuildFromSnapshot(Long expectedVersion) {

@@ -55,6 +55,16 @@ openssl pkey -in ../turnos-service/secrets/jwt-private.pem -pubout -out secrets/
 
 Docker Compose monta esa carpeta en el contenedor en solo lectura. Sin ese archivo, el servicio no arranca. Si se cambia la clave de turnos, hay que volver a exportar la pública.
 
+### HTTPS
+
+En Docker Compose el servicio expone su API solo por HTTPS, en el mismo puerto (ADR-0035), con un certificado autofirmado que comparte con turnos. Ese certificado lo genera el script `generar-certificado.sh` del repo de turnos, que deja `tls.crt` y `tls.key` en `secrets/` de los dos repos, fuera de Git. Para levantar solo el catálogo, hace falta haberlo corrido antes:
+
+```
+../turnos-service/generar-certificado.sh
+```
+
+HTTPS se activa con el perfil `tls`, que el Compose prende siempre. Sin el perfil (las pruebas y `./gradlew bootTestRun`) el servicio queda en HTTP. Turnos llama al catálogo por HTTPS, confiando en ese certificado.
+
 ## Arranque
 
 ```
@@ -66,7 +76,7 @@ Construye la imagen del servicio y levanta dos contenedores: `catalogo-db` (Post
 Para verificar que está en pie:
 
 ```
-curl http://localhost:8081/actuator/health
+curl --cacert secrets/tls.crt https://localhost:8081/actuator/health
 ```
 
 Tiene que responder `{"status":"UP"}` (con el detalle de los grupos de salud).

@@ -24,6 +24,7 @@ public class CatedraIntegrationConfig {
 	// Se obtiene al crear el bean, antes de que Spring arme lo que depende de estos datos. Si
 	// falla, Spring corta el arranque con el mensaje de la excepción. El reintento y los mensajes
 	// de falla son los de toda lectura a la cátedra (CatedraReadExecutor).
+	// no se sacan de un .env porque son de la catedra y pueden variar
 	@Bean
 	public CatedraIntegration catedraIntegration(RestClient catedraRestClient, CatedraReadExecutor catedraReadExecutor) {
 		CatedraIntegration integration = catedraReadExecutor.read(() -> catedraRestClient.get()
@@ -38,3 +39,6 @@ public class CatedraIntegrationConfig {
 	}
 
 }
+
+// Se guarda como cualquier objeto singleton Bean en memoria
+//  RedisConfig y KafkaConfig lo usan mediante inyeccion de parametros
